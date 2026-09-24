@@ -13,3 +13,5 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const ALLOWED_EMAIL_DOMAIN =
   import.meta.env.VITE_ALLOWED_EMAIL_DOMAIN ?? "umanresa.cat";
+
+export const ADMIN_EMAIL = "jgallifa@umanresa.cat";

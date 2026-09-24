@@ -34,8 +34,10 @@ export function EntryForm({
     const eraRaw = formData.get("era") as string;
     const photo = formData.get("photo") as File;
 
-    if (!title || !description || !yearRaw || !photo || photo.size === 0) {
-      setError("Falten camps obligatoris (títol, descripció, any o foto).");
+    if (!title || !description || !yearRaw || !eraRaw || !photo || photo.size === 0) {
+      setError(
+        "Falten camps obligatoris (títol, descripció, any, època o foto)."
+      );
       return;
     }
 
@@ -77,8 +79,9 @@ export function EntryForm({
       title,
       description,
       year,
-      era: (eraRaw || null) as Era | null,
+      era: eraRaw as Era,
       photo_url: publicUrl,
+      photo_path: path,
       author_id: session.user.id,
     });
 
@@ -124,16 +127,18 @@ export function EntryForm({
 
         <div className="flex-1">
           <label htmlFor="era" className="mb-1.5 block text-sm font-medium text-slate-700">
-            Època{" "}
-            <span className="font-normal text-slate-400">(opcional)</span>
+            Època
           </label>
           <select
             id="era"
             name="era"
+            required
             defaultValue=""
             className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-accent-400 focus:ring-2 focus:ring-accent-100"
           >
-            <option value="">Sense especificar</option>
+            <option value="" disabled hidden>
+              Selecciona una època
+            </option>
             {ERA_OPTIONS.map(([value, label]) => (
               <option key={value} value={value}>
                 {label}

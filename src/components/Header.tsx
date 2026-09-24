@@ -1,7 +1,7 @@
 import type { Session } from "@supabase/supabase-js";
-import { supabase } from "../lib/supabase";
+import { supabase, ADMIN_EMAIL } from "../lib/supabase";
 
-type View = "timeline" | "new" | "login";
+type View = "timeline" | "new" | "login" | "admin";
 
 export function Header({
   session,
@@ -12,6 +12,8 @@ export function Header({
   view: View;
   onNavigate: (view: View) => void;
 }) {
+  const isAdmin = session?.user.email === ADMIN_EMAIL;
+
   return (
     <header className="sticky top-0 z-10 border-b border-slate-200/70 bg-white/80 backdrop-blur">
       <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4 sm:px-6">
@@ -28,6 +30,14 @@ export function Header({
         <div className="flex items-center gap-3">
           {session ? (
             <>
+              {isAdmin && (
+                <button
+                  onClick={() => onNavigate("admin")}
+                  className="rounded-full px-3 py-2 text-sm font-medium text-slate-500 transition hover:text-slate-800"
+                >
+                  Administració
+                </button>
+              )}
               <button
                 onClick={() => onNavigate("new")}
                 className="rounded-full bg-accent-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-accent-600"

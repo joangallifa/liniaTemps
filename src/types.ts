@@ -5,6 +5,7 @@ export type Entry = {
   title: string;
   description: string;
   photo_url: string;
+  photo_path: string;
   year: number;
   era: Era | null;
   author_id: string;

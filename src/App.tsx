@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "./lib/supabase";
+import { supabase, ADMIN_EMAIL } from "./lib/supabase";
+import { deleteEntry } from "./lib/entries";
 import { useSession } from "./hooks/useSession";
 import type { Entry } from "./types";
 import { Header } from "./components/Header";
 import { Timeline } from "./components/Timeline";
 import { LoginForm } from "./components/LoginForm";
 import { EntryForm } from "./components/EntryForm";
+import { AdminPage } from "./components/AdminPage";
 
-type View = "timeline" | "new" | "login";
+type View = "timeline" | "new" | "login" | "admin";
 
 export default function App() {
   const { session, loading: sessionLoading } = useSession();
@@ -40,7 +42,23 @@ export default function App() {
     if (session && view === "login") {
       setView("timeline");
     }
-  }, [session, view]);
+    if (
+      !sessionLoading &&
+      view === "admin" &&
+      session?.user.email !== ADMIN_EMAIL
+    ) {
+      setView("timeline");
+    }
+  }, [session, sessionLoading, view]);
+
+  async function handleDelete(entry: Entry) {
+    const errorMessage = await deleteEntry(entry);
+    if (errorMessage) {
+      window.alert("No s'ha pogut eliminar: " + errorMessage);
+      return;
+    }
+    setEntries((current) => current.filter((e) => e.id !== entry.id));
+  }
 
   return (
     <div className="min-h-screen text-slate-900">
@@ -67,6 +85,10 @@ export default function App() {
           </div>
         )}
 
+        {view === "admin" && session?.user.email === ADMIN_EMAIL && (
+          <AdminPage entries={entries} onDelete={handleDelete} />
+        )}
+
         {view === "timeline" && (
           <div>
             <div className="mb-8">
@@ -89,7 +111,11 @@ export default function App() {
                 No s&apos;han pogut carregar les entrades: {entriesError}
               </p>
             ) : (
-              <Timeline entries={entries} />
+              <Timeline
+                entries={entries}
+                session={session}
+                onDelete={handleDelete}
+              />
             )}
           </div>
         )}
