@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Entry } from "../types";
+import { ERA_OPTIONS, ERA_COLORS, type Era } from "../lib/era";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("ca-ES", {
@@ -24,6 +25,17 @@ export function AdminPage({
     countsByAuthor.set(email, (countsByAuthor.get(email) ?? 0) + 1);
   }
   const authors = Array.from(countsByAuthor.keys()).sort();
+
+  const authorStats = Array.from(countsByAuthor.entries())
+    .map(([email, count]) => ({ email, count }))
+    .sort((a, b) => b.count - a.count || a.email.localeCompare(b.email));
+  const maxAuthorCount = Math.max(1, ...authorStats.map((a) => a.count));
+
+  const eraCounts: Partial<Record<Era, number>> = {};
+  for (const entry of entries) {
+    eraCounts[entry.era] = (eraCounts[entry.era] ?? 0) + 1;
+  }
+  const maxEraCount = Math.max(1, ...Object.values(eraCounts));
 
   const filtered = author
     ? entries.filter((entry) => entry.profiles?.email === author)
@@ -70,6 +82,67 @@ export function AdminPage({
           </div>
         )}
       </div>
+
+      {entries.length > 0 && (
+        <section className="mb-8 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate-700">
+              Entrades per època
+            </h2>
+            <ul className="mt-3 space-y-2">
+              {ERA_OPTIONS.map(([era, label]) => {
+                const count = eraCounts[era] ?? 0;
+                const pct = (count / maxEraCount) * 100;
+                return (
+                  <li key={era} className="flex items-center gap-2">
+                    <span className="w-28 flex-shrink-0 truncate text-xs text-slate-600">
+                      {label}
+                    </span>
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className={`h-full rounded-full ${ERA_COLORS[era].pill} ${
+                          count === 0 ? "opacity-20" : ""
+                        }`}
+                        style={{ width: `${count === 0 ? 100 : pct}%` }}
+                      />
+                    </div>
+                    <span className="w-5 flex-shrink-0 text-right text-xs font-semibold text-slate-700">
+                      {count}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate-700">
+              Entrades per alumne
+            </h2>
+            <ul className="mt-3 max-h-40 space-y-2 overflow-y-auto pr-1">
+              {authorStats.map(({ email, count }) => (
+                <li key={email} className="flex items-center gap-2">
+                  <span
+                    className="w-28 flex-shrink-0 truncate text-xs text-slate-600"
+                    title={email}
+                  >
+                    {email.split("@")[0]}
+                  </span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-accent-500"
+                      style={{ width: `${(count / maxAuthorCount) * 100}%` }}
+                    />
+                  </div>
+                  <span className="w-5 flex-shrink-0 text-right text-xs font-semibold text-slate-700">
+                    {count}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
 
       {sorted.length === 0 ? (
         <p className="text-sm text-slate-400">
