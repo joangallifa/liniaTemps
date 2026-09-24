@@ -1,31 +1,37 @@
-"use client";
-
 import { useState, type FormEvent } from "react";
-import { signIn } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
-
-const DOMAIN = "umanresa.cat";
+import { supabase, ALLOWED_EMAIL_DOMAIN } from "../lib/supabase";
 
 export function LoginForm() {
-  const searchParams = useSearchParams();
-  const authError = searchParams.get("error");
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
-
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "sent" | "domain-error">(
-    "idle"
-  );
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "sent" | "domain-error" | "error"
+  >("idle");
+  const [errorMessage, setErrorMessage] = useState("");
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    const trimmed = email.trim();
 
-    if (!email.toLowerCase().trim().endsWith(`@${DOMAIN}`)) {
+    if (!trimmed.toLowerCase().endsWith(`@${ALLOWED_EMAIL_DOMAIN}`)) {
       setStatus("domain-error");
       return;
     }
 
     setStatus("loading");
-    await signIn("sendgrid", { email: email.trim(), redirectTo: callbackUrl });
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: trimmed,
+      options: {
+        emailRedirectTo: window.location.origin + import.meta.env.BASE_URL,
+      },
+    });
+
+    if (error) {
+      setErrorMessage(error.message);
+      setStatus("error");
+      return;
+    }
+
     setStatus("sent");
   }
 
@@ -36,8 +42,10 @@ export function LoginForm() {
       </h1>
       <p className="mt-2 text-sm text-slate-500">
         Introdueix el teu correu de l&apos;institut (
-        <span className="font-medium text-slate-700">@{DOMAIN}</span>) i et
-        enviarem un enllaç d&apos;accés.
+        <span className="font-medium text-slate-700">
+          @{ALLOWED_EMAIL_DOMAIN}
+        </span>
+        ) i et enviarem un enllaç d&apos;accés.
       </p>
 
       {status === "sent" ? (
@@ -58,7 +66,7 @@ export function LoginForm() {
               id="email"
               type="email"
               required
-              placeholder={`nom.cognom@${DOMAIN}`}
+              placeholder={`nom.cognom@${ALLOWED_EMAIL_DOMAIN}`}
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -68,10 +76,13 @@ export function LoginForm() {
             />
           </div>
 
-          {(status === "domain-error" || authError === "AccessDenied") && (
+          {status === "domain-error" && (
             <p className="text-sm text-red-600">
-              Només s&apos;admeten comptes del domini @{DOMAIN}.
+              Només s&apos;admeten comptes del domini @{ALLOWED_EMAIL_DOMAIN}.
             </p>
+          )}
+          {status === "error" && (
+            <p className="text-sm text-red-600">{errorMessage}</p>
           )}
 
           <button

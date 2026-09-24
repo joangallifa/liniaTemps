@@ -1,12 +1,8 @@
 # dependències
 /node_modules
 
-# next.js
-/.next/
-/out/
-
-# producció
-/build
+# build de producció (Vite)
+/dist
 
 # variables d'entorn
 .env
@@ -19,7 +15,3 @@ npm-debug.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
-
-# prisma
-/prisma/dev.db

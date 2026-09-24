@@ -8,117 +8,94 @@ enllaç d'accés (magic link) enviat per correu.
 
 ## Stack
 
-- [Next.js 15](https://nextjs.org/) (App Router) + TypeScript + Tailwind CSS
-- [Prisma](https://www.prisma.io/) + Postgres (pensat per a Vercel Postgres / Neon)
-- [Auth.js (NextAuth v5)](https://authjs.dev/) amb magic link via [SendGrid](https://sendgrid.com/)
-- [Vercel Blob](https://vercel.com/docs/storage/vercel-blob) per emmagatzemar les fotos
+- [Vite](https://vitejs.dev/) + React + TypeScript + Tailwind CSS — SPA
+  estàtica, sense servidor propi
+- [Supabase](https://supabase.com/) — base de dades Postgres, autenticació
+  amb magic link i emmagatzematge de fotos, tot protegit amb Row Level
+  Security
+- [GitHub Pages](https://pages.github.com/) — hosting estàtic gratuït,
+  desplegat automàticament amb GitHub Actions
 
-Tot desplegable des de Vercel; l'únic servei extern necessari és SendGrid
-(gratuït) per poder enviar els correus del magic link.
+No hi ha cap backend propi: el navegador parla directament amb Supabase
+(la clau `anon` és pública per disseny; la seguretat la donen les
+polítiques de RLS, no el secret de la clau).
 
-> **Per què SendGrid i no Resend?** Resend només permet enviar amb
-> adreces d'un domini verificat per DNS. Com que aquest projecte no té
-> accés al DNS de `umanresa.cat`, fem servir la **Single Sender
-> Verification** de SendGrid: es verifica una única bústia (per exemple
-> `jgallifa@umanresa.cat`) clicant un enllaç de confirmació que arriba al
-> correu, sense tocar cap registre DNS. Nota: el domini remitent
-> (`EMAIL_FROM`) i el domini permès per iniciar sessió
-> (`ALLOWED_EMAIL_DOMAIN`) són independents — si algun dia tens accés a un
-> domini propi per DNS, també podries tornar a Resend sense canviar la
-> restricció d'accés.
+## 1. Crear el projecte a Supabase
 
-## Configuració pas a pas
+1. Crea un compte/projecte a [supabase.com](https://supabase.com).
+2. Ves a **SQL Editor** i executa el contingut de
+   [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql).
+   Això crea:
+   - la taula `entries` (amb RLS: lectura pública, escriptura només de les
+     pròpies entrades)
+   - la taula `profiles` (còpia mínima de `auth.users` perquè es pugui
+     mostrar l'autor)
+   - un trigger que **rebutja qualsevol registre amb un correu que no
+     acabi en `@umanresa.cat`**
+   - el bucket públic `photos` per a les fotografies
+3. Ves a **Authentication → Sign In / Providers → Email** i comprova que
+   el mètode "Email OTP / Magic Link" estigui activat (ho està per
+   defecte).
+4. Ves a **Authentication → URL Configuration** i afegeix com a *Redirect
+   URL* l'adreça on servirà GitHub Pages, per exemple:
+   `https://<el-teu-usuari>.github.io/liniaTemps/`
+5. Ves a **Project Settings → API** i copia:
+   - `Project URL` → `VITE_SUPABASE_URL`
+   - `anon public` key → `VITE_SUPABASE_ANON_KEY`
 
-### 1. Base de dades — Vercel Postgres
+## 2. Configurar les variables d'entorn
 
-1. Al dashboard del projecte a Vercel, ves a **Storage → Create Database →
-   Postgres** (proveïdor Neon).
-2. Connecta-la al projecte. Vercel injectarà automàticament les variables
-   d'entorn de connexió.
-3. Aquest projecte espera dues variables concretes: `POSTGRES_PRISMA_URL`
-   (connexió amb pooling) i `POSTGRES_URL_NON_POOLING` (connexió directa,
-   usada per les migracions). Si Vercel les anomena diferent (per exemple
-   `DATABASE_URL` / `DATABASE_URL_UNPOOLED`), crea dues variables noves amb
-   aquests noms exactes apuntant als mateixos valors, o bé actualitza
-   `prisma/schema.prisma` perquè faci servir els noms que Vercel t'hagi
-   donat.
-4. Un cop hi hagi connexió, aplica el schema a la base de dades:
-   ```bash
-   npx prisma db push
-   ```
+Copia `.env.example` a `.env` en local i omple-hi els valors de Supabase.
 
-### 2. Fotos — Vercel Blob
+```bash
+cp .env.example .env
+```
 
-1. **Storage → Create Database → Blob**.
-2. Connecta-la al projecte; injectarà `BLOB_READ_WRITE_TOKEN` automàticament.
-
-### 3. Enviament del magic link — SendGrid
-
-1. Crea un compte a [sendgrid.com](https://sendgrid.com) (pla gratuït,
-   100 correus/dia).
-2. Ves a **Settings → Sender Authentication → Single Sender
-   Verification** i afegeix `jgallifa@umanresa.cat` (o l'adreça que
-   vulguis fer servir de remitent).
-3. Rebràs un correu de confirmació a aquesta bústia: obre'l i clica
-   l'enllaç de verificació. Un cop verificat, ja pots enviar amb aquesta
-   adreça exacta sense tocar cap DNS.
-4. Ves a **Settings → API Keys → Create API Key**, amb permís (com a
-   mínim) "Mail Send", i posa el valor a la variable `AUTH_SENDGRID_KEY`.
-5. Defineix:
-   - `EMAIL_FROM` = l'adreça exacta verificada (ex. `jgallifa@umanresa.cat`)
-   - `EMAIL_FROM_NAME` = el nom que veuran els alumnes (ex. `Línia del
-     temps tecnològica`)
-
-### 4. Autenticació
-
-1. Genera un secret per Auth.js:
-   ```bash
-   npx auth secret
-   ```
-   Copia el valor generat a la variable `AUTH_SECRET`.
-2. `ALLOWED_EMAIL_DOMAIN` ja ve per defecte a `umanresa.cat`; només cal
-   canviar-la si mai vols restringir a un altre domini.
-
-### 5. Variables d'entorn
-
-Copia `.env.example` a `.env` en local i omple els valors. A Vercel,
-defineix-les a **Project Settings → Environment Variables** (les de la base
-de dades i el blob ja hi apareixeran soles si has connectat els stores des
-del pas 1 i 2).
-
-## Desenvolupament local
+## 3. Desenvolupament local
 
 ```bash
 npm install
-npx prisma db push
 npm run dev
 ```
 
-L'aplicació queda disponible a http://localhost:3000.
+L'aplicació queda disponible a http://localhost:5173. Perquè el magic
+link funcioni en local, afegeix també `http://localhost:5173/` a les
+*Redirect URLs* de Supabase (pas 1.4).
 
-## Desplegament a Vercel
+## 4. Desplegament a GitHub Pages
 
-1. Puja aquest projecte a un repositori de GitHub.
-2. A [vercel.com/new](https://vercel.com/new), importa el repositori.
-3. Connecta els stores de Postgres i Blob (o defineix les variables d'entorn
-   manualment com s'explica més amunt).
-4. Desplega. Un cop desplegat (o abans, en local apuntant a la base de dades
-   de producció), aplica el schema:
-   ```bash
-   npx prisma db push
-   ```
+El repositori ja inclou el workflow
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), que
+compila i publica automàticament a cada `push` a `main`.
+
+1. Al repositori de GitHub: **Settings → Pages → Source** → selecciona
+   **GitHub Actions**.
+2. **Settings → Secrets and variables → Actions → New repository
+   secret**, i crea:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+3. Fes push a `main`. Al cap d'uns segons l'acció desplegarà el lloc a
+   `https://<el-teu-usuari>.github.io/liniaTemps/`.
+
+> Si el repositori canvia de nom, actualitza també `base` a
+> `vite.config.ts` perquè coincideixi amb `/<nom-del-repo>/`.
 
 ## Model de dades
 
-- **User**: creat automàticament per Auth.js en iniciar sessió amb el
-  magic link.
-- **Entry**: `title`, `description`, `photoUrl`, `year` (enter; negatiu per
-  a.C.), `era` (opcional: Prehistòria, Edat Antiga, Edat Mitjana, Edat
-  Moderna, Edat Contemporània), `author`.
+- **`profiles`**: `id`, `email` — es crea automàticament en iniciar sessió
+  per primer cop.
+- **`entries`**: `title`, `description`, `photo_url`, `year` (enter;
+  negatiu per a.C.), `era` (opcional: Prehistòria, Edat Antiga, Edat
+  Mitjana, Edat Moderna, Edat Contemporània), `author_id`.
 
-## Límits a tenir en compte
+## Seguretat
 
-- Les fotos es limiten a 4 MB (límit habitual del cos de les Serverless
-  Functions de Vercel al pla Hobby).
-- Qualsevol correu fora del domini configurat (`umanresa.cat`) és rebutjat
-  en el moment d'enviar el magic link.
+- El domini permès per iniciar sessió es reforça a dos nivells: al
+  formulari (UX) i, de manera vinculant, amb un trigger a la base de
+  dades que rebutja qualsevol usuari nou amb un correu que no sigui
+  `@umanresa.cat`.
+- Row Level Security assegura que ningú pugui inserir entrades fent-se
+  passar per un altre autor (`auth.uid() = author_id`), encara que la
+  clau `anon` sigui pública.
+- Les fotos es limiten a 5 MB des del client (ajustable a
+  `src/components/EntryForm.tsx`).

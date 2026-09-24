@@ -1,11 +1,17 @@
-"use client";
-
-import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { ERA_OPTIONS } from "@/lib/era";
+import type { Session } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabase";
+import { ERA_OPTIONS, type Era } from "../lib/era";
 
-export function EntryForm() {
-  const router = useRouter();
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+export function EntryForm({
+  session,
+  onCreated,
+}: {
+  session: Session;
+  onCreated: () => void;
+}) {
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -18,27 +24,71 @@ export function EntryForm() {
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    const title = (formData.get("title") as string).trim();
+    const description = (formData.get("description") as string).trim();
+    const yearRaw = formData.get("year") as string;
+    const eraRaw = formData.get("era") as string;
+    const photo = formData.get("photo") as File;
+
+    if (!title || !description || !yearRaw || !photo || photo.size === 0) {
+      setError("Falten camps obligatoris (títol, descripció, any o foto).");
+      return;
+    }
+
+    const year = Number.parseInt(yearRaw, 10);
+    if (!Number.isFinite(year)) {
+      setError("L'any no és vàlid.");
+      return;
+    }
+
+    if (!photo.type.startsWith("image/")) {
+      setError("El fitxer ha de ser una imatge.");
+      return;
+    }
+    if (photo.size > MAX_PHOTO_BYTES) {
+      setError("La imatge no pot superar els 5 MB.");
+      return;
+    }
+
     setSubmitting(true);
 
-    const formData = new FormData(e.currentTarget);
+    const extension = photo.name.split(".").pop() ?? "jpg";
+    const path = `${session.user.id}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
 
-    try {
-      const res = await fetch("/api/entries", {
-        method: "POST",
-        body: formData,
-      });
+    const { error: uploadError } = await supabase.storage
+      .from("photos")
+      .upload(path, photo);
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "No s'ha pogut desar la tecnologia.");
-      }
-
-      router.push("/");
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error inesperat.");
+    if (uploadError) {
+      setError("No s'ha pogut pujar la foto: " + uploadError.message);
       setSubmitting(false);
+      return;
     }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("photos").getPublicUrl(path);
+
+    const { error: insertError } = await supabase.from("entries").insert({
+      title,
+      description,
+      year,
+      era: (eraRaw || null) as Era | null,
+      photo_url: publicUrl,
+      author_id: session.user.id,
+    });
+
+    if (insertError) {
+      setError("No s'ha pogut desar la tecnologia: " + insertError.message);
+      setSubmitting(false);
+      return;
+    }
+
+    onCreated();
   }
 
   return (
@@ -123,7 +173,7 @@ export function EntryForm() {
           onChange={handlePhotoChange}
           className="w-full rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-600 outline-none file:mr-3 file:rounded-full file:border-0 file:bg-accent-500 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white"
         />
-        <p className="mt-1 text-xs text-slate-400">Màxim 4 MB.</p>
+        <p className="mt-1 text-xs text-slate-400">Màxim 5 MB.</p>
         {preview && (
           <img
             src={preview}

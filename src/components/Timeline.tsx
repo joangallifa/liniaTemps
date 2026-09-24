@@ -1,9 +1,7 @@
-import type { Entry, User } from "@prisma/client";
-import { TimelineCard } from "@/components/TimelineCard";
+import type { Entry } from "../types";
+import { TimelineCard } from "./TimelineCard";
 
-type EntryWithAuthor = Entry & { author: Pick<User, "name" | "email"> };
-
-export function Timeline({ entries }: { entries: EntryWithAuthor[] }) {
+export function Timeline({ entries }: { entries: Entry[] }) {
   if (entries.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-10 text-center">

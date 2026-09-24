@@ -1,0 +1,99 @@
+import { useCallback, useEffect, useState } from "react";
+import { supabase } from "./lib/supabase";
+import { useSession } from "./hooks/useSession";
+import type { Entry } from "./types";
+import { Header } from "./components/Header";
+import { Timeline } from "./components/Timeline";
+import { LoginForm } from "./components/LoginForm";
+import { EntryForm } from "./components/EntryForm";
+
+type View = "timeline" | "new" | "login";
+
+export default function App() {
+  const { session, loading: sessionLoading } = useSession();
+  const [view, setView] = useState<View>("timeline");
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [entriesLoading, setEntriesLoading] = useState(true);
+  const [entriesError, setEntriesError] = useState<string | null>(null);
+
+  const loadEntries = useCallback(async () => {
+    setEntriesLoading(true);
+    const { data, error } = await supabase
+      .from("entries")
+      .select("*, profiles(email)")
+      .order("year", { ascending: true });
+
+    if (error) {
+      setEntriesError(error.message);
+    } else {
+      setEntries(data as Entry[]);
+      setEntriesError(null);
+    }
+    setEntriesLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadEntries();
+  }, [loadEntries]);
+
+  useEffect(() => {
+    if (session && view === "login") {
+      setView("timeline");
+    }
+  }, [session, view]);
+
+  return (
+    <div className="min-h-screen text-slate-900">
+      <Header session={session} view={view} onNavigate={setView} />
+      <main className="mx-auto max-w-3xl px-4 pb-24 pt-8 sm:px-6">
+        {view === "login" && !session && <LoginForm />}
+
+        {view === "new" && session && (
+          <div className="mx-auto max-w-xl">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+              Afegir una tecnologia
+            </h1>
+            <p className="mt-2 text-sm text-slate-500">
+              Comparteix una tecnologia rellevant de la història amb la resta
+              de la classe.
+            </p>
+            <EntryForm
+              session={session}
+              onCreated={() => {
+                setView("timeline");
+                loadEntries();
+              }}
+            />
+          </div>
+        )}
+
+        {view === "timeline" && (
+          <div>
+            <div className="mb-8">
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+                Tecnologies al llarg de la història
+              </h1>
+              <p className="mt-1 text-sm text-slate-500">
+                {entries.length}{" "}
+                {entries.length === 1
+                  ? "tecnologia afegida"
+                  : "tecnologies afegides"}{" "}
+                per la classe.
+              </p>
+            </div>
+
+            {entriesLoading || sessionLoading ? (
+              <p className="text-sm text-slate-400">Carregant...</p>
+            ) : entriesError ? (
+              <p className="text-sm text-red-600">
+                No s&apos;han pogut carregar les entrades: {entriesError}
+              </p>
+            ) : (
+              <Timeline entries={entries} />
+            )}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
