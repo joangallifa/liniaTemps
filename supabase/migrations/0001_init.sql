@@ -99,3 +99,10 @@ create policy "Els usuaris autenticats poden pujar fotos"
   on storage.objects for insert
   to authenticated
   with check (bucket_id = 'photos');
+
+-- Privilegis a nivell de taula (RLS només filtra files; sense aquest
+-- GRANT, PostgREST respon "permission denied for table ...").
+grant usage on schema public to anon, authenticated;
+grant select on public.entries to anon, authenticated;
+grant insert on public.entries to authenticated;
+grant select on public.profiles to anon, authenticated;
