@@ -25,7 +25,7 @@ export function LoginForm() {
     }
 
     setStatus("loading");
-    await signIn("resend", { email: email.trim(), redirectTo: callbackUrl });
+    await signIn("sendgrid", { email: email.trim(), redirectTo: callbackUrl });
     setStatus("sent");
   }
 
