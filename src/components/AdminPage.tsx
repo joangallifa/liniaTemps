@@ -15,24 +15,64 @@ export function AdminPage({
   entries: Entry[];
   onDelete: (entry: Entry) => Promise<void>;
 }) {
-  const sorted = [...entries].sort(
+  const [author, setAuthor] = useState("");
+
+  const authors = Array.from(
+    new Set(entries.map((entry) => entry.profiles?.email).filter(Boolean))
+  ).sort() as string[];
+
+  const filtered = author
+    ? entries.filter((entry) => entry.profiles?.email === author)
+    : entries;
+
+  const sorted = [...filtered].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-          Administració
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Totes les entrades pujades ({entries.length}), ordenades per data de
-          creació.
-        </p>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+            Administració
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {filtered.length} de {entries.length} entrades, ordenades per data
+            de creació.
+          </p>
+        </div>
+
+        {authors.length > 0 && (
+          <div>
+            <label
+              htmlFor="author-filter"
+              className="mb-1.5 block text-xs font-medium text-slate-500"
+            >
+              Filtra per creador
+            </label>
+            <select
+              id="author-filter"
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none transition focus:border-accent-400 focus:ring-2 focus:ring-accent-100"
+            >
+              <option value="">Tots els creadors</option>
+              {authors.map((email) => (
+                <option key={email} value={email}>
+                  {email}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {sorted.length === 0 ? (
-        <p className="text-sm text-slate-400">Encara no hi ha cap entrada.</p>
+        <p className="text-sm text-slate-400">
+          {entries.length === 0
+            ? "Encara no hi ha cap entrada."
+            : "Cap entrada d'aquest creador."}
+        </p>
       ) : (
         <ul className="space-y-3">
           {sorted.map((entry) => (
