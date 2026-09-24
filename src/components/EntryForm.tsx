@@ -132,6 +132,12 @@ export function EntryForm({
           .insert({ ...payload, author_id: session.user.id });
 
     if (saveError) {
+      // La foto ja s'havia pujat abans d'aquest error: si no la
+      // netegem, queda òrfena a l'storage sense cap entrada que hi
+      // apunti.
+      if (hasNewPhoto) {
+        await supabase.storage.from("photos").remove([photoPath]);
+      }
       setError("No s'ha pogut desar la tecnologia: " + saveError.message);
       setSubmitting(false);
       return;
