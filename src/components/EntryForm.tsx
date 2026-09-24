@@ -2,6 +2,8 @@ import { useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import { ERA_OPTIONS, type Era } from "../lib/era";
+import { sanitizeHtml, htmlToText } from "../lib/richText";
+import { RichTextEditor } from "./RichTextEditor";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
@@ -12,6 +14,7 @@ export function EntryForm({
   session: Session;
   onCreated: () => void;
 }) {
+  const [description, setDescription] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -29,12 +32,19 @@ export function EntryForm({
     const formData = new FormData(form);
 
     const title = (formData.get("title") as string).trim();
-    const description = (formData.get("description") as string).trim();
+    const descriptionHtml = sanitizeHtml(description);
     const yearRaw = formData.get("year") as string;
     const eraRaw = formData.get("era") as string;
     const photo = formData.get("photo") as File;
 
-    if (!title || !description || !yearRaw || !eraRaw || !photo || photo.size === 0) {
+    if (
+      !title ||
+      !htmlToText(descriptionHtml) ||
+      !yearRaw ||
+      !eraRaw ||
+      !photo ||
+      photo.size === 0
+    ) {
       setError(
         "Falten camps obligatoris (títol, descripció, any, època o foto)."
       );
@@ -77,7 +87,7 @@ export function EntryForm({
 
     const { error: insertError } = await supabase.from("entries").insert({
       title,
-      description,
+      description: descriptionHtml,
       year,
       era: eraRaw as Era,
       photo_url: publicUrl,
@@ -149,19 +159,13 @@ export function EntryForm({
       </div>
 
       <div>
-        <label
-          htmlFor="description"
-          className="mb-1.5 block text-sm font-medium text-slate-700"
-        >
+        <span className="mb-1.5 block text-sm font-medium text-slate-700">
           Descripció
-        </label>
-        <textarea
-          id="description"
-          name="description"
-          required
-          rows={4}
+        </span>
+        <RichTextEditor
+          value={description}
+          onChange={setDescription}
           placeholder="Explica breument què és i per què va ser important..."
-          className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-accent-400 focus:ring-2 focus:ring-accent-100"
         />
       </div>
 

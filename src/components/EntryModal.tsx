@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import type { Entry } from "../types";
 import { ERA_LABELS } from "../lib/era";
 import { formatYear, authorLabel, initials } from "../lib/entryDisplay";
+import { toDisplayHtml } from "../lib/richText";
 
 export function EntryModal({
   entry,
@@ -29,7 +30,7 @@ export function EntryModal({
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative h-56 w-full flex-shrink-0 bg-slate-100">
+        <div className="relative h-64 w-full flex-shrink-0 bg-slate-100">
           <img
             src={entry.photo_url}
             alt={entry.title}
@@ -57,9 +58,10 @@ export function EntryModal({
           <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-900">
             {entry.title}
           </h2>
-          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-600">
-            {entry.description}
-          </p>
+          <div
+            className="rich-text mt-3 text-sm leading-relaxed text-slate-600"
+            dangerouslySetInnerHTML={{ __html: toDisplayHtml(entry.description) }}
+          />
 
           <div className="mt-5 flex items-center gap-2 border-t border-slate-100 pt-4">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-500 text-xs font-semibold text-white">

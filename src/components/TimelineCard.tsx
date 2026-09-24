@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Entry } from "../types";
 import { formatYear, authorLabel, initials } from "../lib/entryDisplay";
+import { htmlToText } from "../lib/richText";
 
 export function TimelineCard({
   entry,
@@ -27,7 +28,7 @@ export function TimelineCard({
       onClick={() => onOpen(entry)}
       className="group relative flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md"
     >
-      <div className="relative h-32 w-full flex-shrink-0 bg-slate-100">
+      <div className="relative h-44 w-full flex-shrink-0 bg-slate-100">
         <img
           src={entry.photo_url}
           alt={entry.title}
@@ -53,8 +54,8 @@ export function TimelineCard({
         <h2 className="line-clamp-2 text-sm font-semibold leading-snug tracking-tight text-slate-900">
           {entry.title}
         </h2>
-        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-slate-600">
-          {entry.description}
+        <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-slate-600">
+          {htmlToText(entry.description)}
         </p>
         <span className="mt-1 text-[11px] font-medium text-accent-600 group-hover:underline">
           Veure més

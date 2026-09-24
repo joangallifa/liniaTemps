@@ -22,8 +22,8 @@ function buildSegments(entries: Entry[]): Segment[] {
   return segments;
 }
 
-const CARD_WIDTH = 256;
-const CARD_HEIGHT = 340;
+const CARD_WIDTH = 320;
+const CARD_HEIGHT = 420;
 const MAX_VISIBLE_OFFSET = 4;
 
 export function Timeline({
@@ -91,7 +91,7 @@ export function Timeline({
   const activeEntry = entries[current];
   const activeColors = ERA_COLORS[activeEntry.era];
   const segments = buildSegments(entries);
-  const spacing = Math.max(120, Math.min(200, stageWidth * 0.3));
+  const spacing = Math.max(150, Math.min(250, stageWidth * 0.32));
 
   function handleWheel(e: React.WheelEvent) {
     const horizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
@@ -137,7 +137,7 @@ export function Timeline({
         onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="relative h-[400px] w-full overflow-hidden rounded-3xl"
+        className="relative h-[480px] w-full overflow-hidden rounded-3xl"
         style={{ perspective: "1100px" }}
       >
         <div
@@ -150,7 +150,7 @@ export function Timeline({
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute bottom-5 left-1/2 h-5 w-56 -translate-x-1/2 rounded-full bg-slate-900/10 blur-md"
+          className="pointer-events-none absolute bottom-5 left-1/2 h-5 w-72 -translate-x-1/2 rounded-full bg-slate-900/10 blur-md"
         />
 
         {entries.map((entry, index) => {
