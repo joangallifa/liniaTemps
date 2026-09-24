@@ -17,9 +17,13 @@ export function AdminPage({
 }) {
   const [author, setAuthor] = useState("");
 
-  const authors = Array.from(
-    new Set(entries.map((entry) => entry.profiles?.email).filter(Boolean))
-  ).sort() as string[];
+  const countsByAuthor = new Map<string, number>();
+  for (const entry of entries) {
+    const email = entry.profiles?.email;
+    if (!email) continue;
+    countsByAuthor.set(email, (countsByAuthor.get(email) ?? 0) + 1);
+  }
+  const authors = Array.from(countsByAuthor.keys()).sort();
 
   const filtered = author
     ? entries.filter((entry) => entry.profiles?.email === author)
@@ -56,10 +60,10 @@ export function AdminPage({
               onChange={(e) => setAuthor(e.target.value)}
               className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none transition focus:border-accent-400 focus:ring-2 focus:ring-accent-100"
             >
-              <option value="">Tots els creadors</option>
+              <option value="">Tots els creadors ({entries.length})</option>
               {authors.map((email) => (
                 <option key={email} value={email}>
-                  {email}
+                  {email} ({countsByAuthor.get(email)})
                 </option>
               ))}
             </select>
