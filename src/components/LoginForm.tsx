@@ -1,14 +1,18 @@
 import { useState, type FormEvent } from "react";
 import { supabase, ALLOWED_EMAIL_DOMAIN } from "../lib/supabase";
 
+type Step = "email" | "code";
+
 export function LoginForm() {
+  const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [status, setStatus] = useState<
-    "idle" | "loading" | "sent" | "domain-error" | "error"
+    "idle" | "loading" | "domain-error" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSendCode(e: FormEvent) {
     e.preventDefault();
     const trimmed = email.trim();
 
@@ -19,12 +23,7 @@ export function LoginForm() {
 
     setStatus("loading");
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email: trimmed,
-      options: {
-        emailRedirectTo: window.location.origin + import.meta.env.BASE_URL,
-      },
-    });
+    const { error } = await supabase.auth.signInWithOtp({ email: trimmed });
 
     if (error) {
       setErrorMessage(error.message);
@@ -32,7 +31,89 @@ export function LoginForm() {
       return;
     }
 
-    setStatus("sent");
+    setStatus("idle");
+    setStep("code");
+  }
+
+  async function handleVerifyCode(e: FormEvent) {
+    e.preventDefault();
+    setStatus("loading");
+
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: code.trim(),
+      type: "email",
+    });
+
+    if (error) {
+      setErrorMessage(error.message);
+      setStatus("error");
+      return;
+    }
+    // En cas d'èxit, useSession() detecta la nova sessió automàticament.
+  }
+
+  if (step === "code") {
+    return (
+      <div className="mx-auto max-w-sm">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+          Introdueix el codi
+        </h1>
+        <p className="mt-2 text-sm text-slate-500">
+          T&apos;hem enviat un codi de 6 xifres a <strong>{email}</strong>.
+          Revisa també la carpeta de spam.
+        </p>
+
+        <form onSubmit={handleVerifyCode} className="mt-8 space-y-4">
+          <div>
+            <label
+              htmlFor="code"
+              className="mb-1.5 block text-sm font-medium text-slate-700"
+            >
+              Codi
+            </label>
+            <input
+              id="code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              required
+              placeholder="123456"
+              value={code}
+              onChange={(e) => {
+                setCode(e.target.value);
+                setStatus("idle");
+              }}
+              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-center text-lg tracking-[0.3em] shadow-sm outline-none transition focus:border-accent-400 focus:ring-2 focus:ring-accent-100"
+            />
+          </div>
+
+          {status === "error" && (
+            <p className="text-sm text-red-600">{errorMessage}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={status === "loading"}
+            className="w-full rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-accent-600 disabled:opacity-60"
+          >
+            {status === "loading" ? "Comprovant..." : "Entra"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setStep("email");
+              setCode("");
+              setStatus("idle");
+            }}
+            className="w-full text-center text-xs font-medium text-slate-400 hover:text-slate-600"
+          >
+            Fer servir un altre correu
+          </button>
+        </form>
+      </div>
+    );
   }
 
   return (
@@ -45,55 +126,48 @@ export function LoginForm() {
         <span className="font-medium text-slate-700">
           @{ALLOWED_EMAIL_DOMAIN}
         </span>
-        ) i et enviarem un enllaç d&apos;accés.
+        ) i et enviarem un codi d&apos;accés.
       </p>
 
-      {status === "sent" ? (
-        <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-800">
-          T&apos;hem enviat un correu a <strong>{email}</strong> amb un enllaç
-          per entrar. Revisa també la carpeta de spam.
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-          <div>
-            <label
-              htmlFor="email"
-              className="mb-1.5 block text-sm font-medium text-slate-700"
-            >
-              Correu electrònic
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              placeholder={`nom.cognom@${ALLOWED_EMAIL_DOMAIN}`}
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setStatus("idle");
-              }}
-              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-accent-400 focus:ring-2 focus:ring-accent-100"
-            />
-          </div>
-
-          {status === "domain-error" && (
-            <p className="text-sm text-red-600">
-              Només s&apos;admeten comptes del domini @{ALLOWED_EMAIL_DOMAIN}.
-            </p>
-          )}
-          {status === "error" && (
-            <p className="text-sm text-red-600">{errorMessage}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={status === "loading"}
-            className="w-full rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-accent-600 disabled:opacity-60"
+      <form onSubmit={handleSendCode} className="mt-8 space-y-4">
+        <div>
+          <label
+            htmlFor="email"
+            className="mb-1.5 block text-sm font-medium text-slate-700"
           >
-            {status === "loading" ? "Enviant..." : "Envia l'enllaç d'accés"}
-          </button>
-        </form>
-      )}
+            Correu electrònic
+          </label>
+          <input
+            id="email"
+            type="email"
+            required
+            placeholder={`nom.cognom@${ALLOWED_EMAIL_DOMAIN}`}
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setStatus("idle");
+            }}
+            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-accent-400 focus:ring-2 focus:ring-accent-100"
+          />
+        </div>
+
+        {status === "domain-error" && (
+          <p className="text-sm text-red-600">
+            Només s&apos;admeten comptes del domini @{ALLOWED_EMAIL_DOMAIN}.
+          </p>
+        )}
+        {status === "error" && (
+          <p className="text-sm text-red-600">{errorMessage}</p>
+        )}
+
+        <button
+          type="submit"
+          disabled={status === "loading"}
+          className="w-full rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-accent-600 disabled:opacity-60"
+        >
+          {status === "loading" ? "Enviant..." : "Envia el codi"}
+        </button>
+      </form>
     </div>
   );
 }
