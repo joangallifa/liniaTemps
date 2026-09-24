@@ -1,6 +1,8 @@
+import { useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { Entry } from "../types";
 import { TimelineCard } from "./TimelineCard";
+import { EntryModal } from "./EntryModal";
 import { ADMIN_EMAIL } from "../lib/supabase";
 import { ERA_LABELS, ERA_COLORS, type Era } from "../lib/era";
 
@@ -28,6 +30,8 @@ export function Timeline({
   session: Session | null;
   onDelete: (entry: Entry) => Promise<void>;
 }) {
+  const [selected, setSelected] = useState<Entry | null>(null);
+
   if (entries.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-10 text-center">
@@ -80,6 +84,7 @@ export function Timeline({
                           isAdmin || session?.user.id === entry.author_id
                         }
                         onDelete={onDelete}
+                        onOpen={setSelected}
                       />
                     </div>
                   </div>
@@ -89,6 +94,10 @@ export function Timeline({
           );
         })}
       </div>
+
+      {selected && (
+        <EntryModal entry={selected} onClose={() => setSelected(null)} />
+      )}
     </div>
   );
 }

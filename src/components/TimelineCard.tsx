@@ -1,37 +1,32 @@
 import { useState } from "react";
 import type { Entry } from "../types";
-
-function formatYear(year: number) {
-  return year < 0 ? `${Math.abs(year)} aC` : `${year}`;
-}
-
-function authorLabel(entry: Entry) {
-  return entry.profiles?.email.split("@")[0] ?? "Anònim";
-}
-
-function initials(entry: Entry) {
-  return authorLabel(entry).slice(0, 1).toUpperCase();
-}
+import { formatYear, authorLabel, initials } from "../lib/entryDisplay";
 
 export function TimelineCard({
   entry,
   canDelete,
   onDelete,
+  onOpen,
 }: {
   entry: Entry;
   canDelete: boolean;
   onDelete: (entry: Entry) => Promise<void>;
+  onOpen: (entry: Entry) => void;
 }) {
   const [deleting, setDeleting] = useState(false);
 
-  async function handleDelete() {
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
     if (!window.confirm(`Segur que vols eliminar "${entry.title}"?`)) return;
     setDeleting(true);
     await onDelete(entry);
   }
 
   return (
-    <article className="group relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
+    <article
+      onClick={() => onOpen(entry)}
+      className="group relative flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md"
+    >
       <div className="relative h-32 w-full flex-shrink-0 bg-slate-100">
         <img
           src={entry.photo_url}
@@ -58,9 +53,12 @@ export function TimelineCard({
         <h2 className="line-clamp-2 text-sm font-semibold leading-snug tracking-tight text-slate-900">
           {entry.title}
         </h2>
-        <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-slate-600">
+        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-slate-600">
           {entry.description}
         </p>
+        <span className="mt-1 text-[11px] font-medium text-accent-600 group-hover:underline">
+          Veure més
+        </span>
 
         <div className="mt-3 flex items-center gap-1.5 border-t border-slate-100 pt-3">
           <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-accent-500 text-[10px] font-semibold text-white">
