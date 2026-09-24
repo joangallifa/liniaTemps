@@ -4,20 +4,24 @@ import { supabase } from "../lib/supabase";
 import { ERA_OPTIONS, ERA_RANGES, ERA_LABELS, eraRangeLabel, type Era } from "../lib/era";
 import { sanitizeHtml, htmlToText } from "../lib/richText";
 import { RichTextEditor } from "./RichTextEditor";
+import type { Entry } from "../types";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 export function EntryForm({
   session,
-  onCreated,
+  entry,
+  onSaved,
 }: {
   session: Session;
-  onCreated: () => void;
+  entry?: Entry;
+  onSaved: () => void;
 }) {
-  const [description, setDescription] = useState("");
-  const [eraInput, setEraInput] = useState("");
-  const [yearInput, setYearInput] = useState("");
-  const [preview, setPreview] = useState<string | null>(null);
+  const isEditing = !!entry;
+  const [description, setDescription] = useState(entry?.description ?? "");
+  const [eraInput, setEraInput] = useState<string>(entry?.era ?? "");
+  const [yearInput, setYearInput] = useState(entry?.year?.toString() ?? "");
+  const [preview, setPreview] = useState<string | null>(entry?.photo_url ?? null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -30,7 +34,7 @@ export function EntryForm({
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    setPreview(file ? URL.createObjectURL(file) : null);
+    setPreview(file ? URL.createObjectURL(file) : entry?.photo_url ?? null);
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -44,15 +48,15 @@ export function EntryForm({
     const descriptionHtml = sanitizeHtml(description);
     const yearRaw = yearInput.trim();
     const eraRaw = eraInput;
-    const photo = formData.get("photo") as File;
+    const photo = formData.get("photo") as File | null;
+    const hasNewPhoto = !!photo && photo.size > 0;
 
     if (
       !title ||
       !htmlToText(descriptionHtml) ||
       !yearRaw ||
       !eraRaw ||
-      !photo ||
-      photo.size === 0
+      (!isEditing && !hasNewPhoto)
     ) {
       setError(
         "Falten camps obligatoris (títol, descripció, any, època o foto)."
@@ -74,51 +78,70 @@ export function EntryForm({
       return;
     }
 
-    if (!photo.type.startsWith("image/")) {
-      setError("El fitxer ha de ser una imatge.");
-      return;
-    }
-    if (photo.size > MAX_PHOTO_BYTES) {
-      setError("La imatge no pot superar els 5 MB.");
-      return;
+    if (hasNewPhoto) {
+      if (!photo!.type.startsWith("image/")) {
+        setError("El fitxer ha de ser una imatge.");
+        return;
+      }
+      if (photo!.size > MAX_PHOTO_BYTES) {
+        setError("La imatge no pot superar els 5 MB.");
+        return;
+      }
     }
 
     setSubmitting(true);
 
-    const extension = photo.name.split(".").pop() ?? "jpg";
-    const path = `${session.user.id}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+    let photoUrl = entry?.photo_url ?? "";
+    let photoPath = entry?.photo_path ?? "";
 
-    const { error: uploadError } = await supabase.storage
-      .from("photos")
-      .upload(path, photo);
+    if (hasNewPhoto) {
+      const extension = photo!.name.split(".").pop() ?? "jpg";
+      const newPath = `${session.user.id}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
 
-    if (uploadError) {
-      setError("No s'ha pogut pujar la foto: " + uploadError.message);
-      setSubmitting(false);
-      return;
+      const { error: uploadError } = await supabase.storage
+        .from("photos")
+        .upload(newPath, photo!);
+
+      if (uploadError) {
+        setError("No s'ha pogut pujar la foto: " + uploadError.message);
+        setSubmitting(false);
+        return;
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("photos").getPublicUrl(newPath);
+
+      photoUrl = publicUrl;
+      photoPath = newPath;
     }
 
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("photos").getPublicUrl(path);
-
-    const { error: insertError } = await supabase.from("entries").insert({
+    const payload = {
       title,
       description: descriptionHtml,
       year,
       era: eraRaw as Era,
-      photo_url: publicUrl,
-      photo_path: path,
-      author_id: session.user.id,
-    });
+      photo_url: photoUrl,
+      photo_path: photoPath,
+    };
 
-    if (insertError) {
-      setError("No s'ha pogut desar la tecnologia: " + insertError.message);
+    const { error: saveError } = isEditing
+      ? await supabase.from("entries").update(payload).eq("id", entry!.id)
+      : await supabase
+          .from("entries")
+          .insert({ ...payload, author_id: session.user.id });
+
+    if (saveError) {
+      setError("No s'ha pogut desar la tecnologia: " + saveError.message);
       setSubmitting(false);
       return;
     }
 
-    onCreated();
+    if (hasNewPhoto && entry?.photo_path && entry.photo_path !== photoPath) {
+      supabase.storage.from("photos").remove([entry.photo_path]);
+    }
+
+    onSaved();
   }
 
   return (
@@ -132,6 +155,7 @@ export function EntryForm({
           name="title"
           type="text"
           required
+          defaultValue={entry?.title ?? ""}
           placeholder="Ex: La impremta"
           className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-accent-400 focus:ring-2 focus:ring-accent-100"
         />
@@ -216,11 +240,15 @@ export function EntryForm({
           name="photo"
           type="file"
           accept="image/*"
-          required
+          required={!isEditing}
           onChange={handlePhotoChange}
           className="w-full rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-600 outline-none file:mr-3 file:rounded-full file:border-0 file:bg-accent-500 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white"
         />
-        <p className="mt-1 text-xs text-slate-400">Màxim 5 MB.</p>
+        <p className="mt-1 text-xs text-slate-400">
+          {isEditing
+            ? "Deixa-ho buit per mantenir la foto actual. Màxim 5 MB."
+            : "Màxim 5 MB."}
+        </p>
         {preview && (
           <img
             src={preview}
@@ -237,7 +265,11 @@ export function EntryForm({
         disabled={submitting}
         className="w-full rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-accent-600 disabled:opacity-60"
       >
-        {submitting ? "Desant..." : "Afegir a la línia de temps"}
+        {submitting
+          ? "Desant..."
+          : isEditing
+            ? "Desar els canvis"
+            : "Afegir a la línia de temps"}
       </button>
     </form>
   );

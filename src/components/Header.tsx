@@ -7,10 +7,12 @@ export function Header({
   session,
   view,
   onNavigate,
+  onAddNew,
 }: {
   session: Session | null;
   view: View;
   onNavigate: (view: View) => void;
+  onAddNew: () => void;
 }) {
   const isAdmin = session?.user.email === ADMIN_EMAIL;
 
@@ -39,7 +41,7 @@ export function Header({
                 </button>
               )}
               <button
-                onClick={() => onNavigate("new")}
+                onClick={onAddNew}
                 className="rounded-full bg-accent-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-accent-600"
               >
                 + Afegir tecnologia

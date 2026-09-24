@@ -7,9 +7,13 @@ import { toDisplayHtml } from "../lib/richText";
 export function EntryModal({
   entry,
   onClose,
+  canEdit,
+  onEdit,
 }: {
   entry: Entry;
   onClose: () => void;
+  canEdit: boolean;
+  onEdit: (entry: Entry) => void;
 }) {
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -63,13 +67,23 @@ export function EntryModal({
             dangerouslySetInnerHTML={{ __html: toDisplayHtml(entry.description) }}
           />
 
-          <div className="mt-5 flex items-center gap-2 border-t border-slate-100 pt-4">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-500 text-xs font-semibold text-white">
-              {initials(entry)}
-            </span>
-            <span className="text-xs font-medium text-slate-500">
-              {authorLabel(entry)}
-            </span>
+          <div className="mt-5 flex items-center justify-between gap-2 border-t border-slate-100 pt-4">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-500 text-xs font-semibold text-white">
+                {initials(entry)}
+              </span>
+              <span className="text-xs font-medium text-slate-500">
+                {authorLabel(entry)}
+              </span>
+            </div>
+            {canEdit && (
+              <button
+                onClick={() => onEdit(entry)}
+                className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+              >
+                Editar
+              </button>
+            )}
           </div>
         </div>
       </div>

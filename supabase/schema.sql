@@ -78,6 +78,19 @@ create policy "Els usuaris autenticats poden afegir les seves entrades"
   to authenticated
   with check (auth.uid() = author_id);
 
+drop policy if exists "Actualitzar entrada pròpia, o qualsevol com a administrador" on public.entries;
+create policy "Actualitzar entrada pròpia, o qualsevol com a administrador"
+  on public.entries for update
+  to authenticated
+  using (
+    auth.uid() = author_id
+    or auth.email() = 'jgallifa@umanresa.cat'
+  )
+  with check (
+    auth.uid() = author_id
+    or auth.email() = 'jgallifa@umanresa.cat'
+  );
+
 drop policy if exists "Esborrar entrada pròpia, o qualsevol com a administrador" on public.entries;
 create policy "Esborrar entrada pròpia, o qualsevol com a administrador"
   on public.entries for delete
@@ -170,8 +183,8 @@ create policy "Esborrar foto pròpia, o qualsevol com a administrador"
 grant usage on schema public to anon, authenticated;
 
 grant select                 on public.profiles to anon, authenticated;
-grant select                 on public.entries  to anon;
-grant select, insert, delete on public.entries  to authenticated;
+grant select                         on public.entries to anon;
+grant select, insert, update, delete on public.entries to authenticated;
 
 -- ---------------------------------------------------------------------
 -- 7. Refresca la caché d'esquema de PostgREST

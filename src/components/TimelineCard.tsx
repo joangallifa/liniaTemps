@@ -6,12 +6,16 @@ import { htmlToText } from "../lib/richText";
 export function TimelineCard({
   entry,
   canDelete,
+  canEdit,
   onDelete,
+  onEdit,
   onOpen,
 }: {
   entry: Entry;
   canDelete: boolean;
+  canEdit: boolean;
   onDelete: (entry: Entry) => Promise<void>;
+  onEdit: (entry: Entry) => void;
   onOpen: (entry: Entry) => void;
 }) {
   const [deleting, setDeleting] = useState(false);
@@ -21,6 +25,11 @@ export function TimelineCard({
     if (!window.confirm(`Segur que vols eliminar "${entry.title}"?`)) return;
     setDeleting(true);
     await onDelete(entry);
+  }
+
+  function handleEdit(e: React.MouseEvent) {
+    e.stopPropagation();
+    onEdit(entry);
   }
 
   return (
@@ -35,15 +44,28 @@ export function TimelineCard({
           loading="lazy"
           className="h-full w-full object-cover"
         />
-        {canDelete && (
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            title="Eliminar"
-            className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-red-600 shadow-sm transition hover:bg-white disabled:opacity-60"
-          >
-            {deleting ? "…" : "✕"}
-          </button>
+        {(canEdit || canDelete) && (
+          <div className="absolute right-2 top-2 flex gap-1.5">
+            {canEdit && (
+              <button
+                onClick={handleEdit}
+                title="Editar"
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow-sm transition hover:bg-white"
+              >
+                ✎
+              </button>
+            )}
+            {canDelete && (
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                title="Eliminar"
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-red-600 shadow-sm transition hover:bg-white disabled:opacity-60"
+              >
+                {deleting ? "…" : "✕"}
+              </button>
+            )}
+          </div>
         )}
         <span className="absolute bottom-2 left-2 rounded-full bg-white/90 px-2.5 py-0.5 text-[11px] font-semibold text-accent-700 shadow-sm">
           {formatYear(entry.year)}

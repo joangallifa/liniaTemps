@@ -22,22 +22,24 @@ function buildSegments(entries: Entry[]): Segment[] {
   return segments;
 }
 
-const CARD_WIDTH = 320;
-const CARD_HEIGHT = 420;
 const MAX_VISIBLE_OFFSET = 4;
 
 export function Timeline({
   entries,
   session,
   onDelete,
+  onEdit,
 }: {
   entries: Entry[];
   session: Session | null;
   onDelete: (entry: Entry) => Promise<void>;
+  onEdit: (entry: Entry) => void;
 }) {
   const [active, setActive] = useState(0);
   const [selected, setSelected] = useState<Entry | null>(null);
   const [stageWidth, setStageWidth] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const lastWheel = useRef(0);
   const touchStartX = useRef<number | null>(null);
@@ -57,7 +59,22 @@ export function Timeline({
     const observer = new ResizeObserver(update);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [count]);
+  }, [count, isFullscreen]);
+
+  useEffect(() => {
+    const handleChange = () =>
+      setIsFullscreen(document.fullscreenElement === containerRef.current);
+    document.addEventListener("fullscreenchange", handleChange);
+    return () => document.removeEventListener("fullscreenchange", handleChange);
+  }, []);
+
+  async function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else {
+      await containerRef.current?.requestFullscreen();
+    }
+  }
 
   const step = useCallback(
     (delta: number) => {
@@ -93,6 +110,10 @@ export function Timeline({
   const segments = buildSegments(entries);
   const spacing = Math.max(150, Math.min(250, stageWidth * 0.32));
 
+  const cardWidth = isFullscreen ? 400 : 320;
+  const cardHeight = isFullscreen ? 520 : 420;
+  const stageHeight = isFullscreen ? "min(680px, 72vh)" : "480px";
+
   function handleWheel(e: React.WheelEvent) {
     const horizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
     const delta = horizontal ? e.deltaX : e.shiftKey ? e.deltaY : 0;
@@ -115,7 +136,14 @@ export function Timeline({
   }
 
   return (
-    <div className="select-none">
+    <div
+      ref={containerRef}
+      className={
+        isFullscreen
+          ? "flex h-screen w-screen select-none flex-col justify-center bg-[#f7f8fb] px-6 py-8"
+          : "select-none"
+      }
+    >
       {/* Capçalera de l'entrada activa */}
       <div className="mb-4 flex items-center justify-center gap-3">
         <span
@@ -129,6 +157,13 @@ export function Timeline({
         <span className="text-xs text-slate-400">
           {current + 1} / {count}
         </span>
+        <button
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "Sortir de pantalla completa" : "Pantalla completa"}
+          className="ml-1 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+        >
+          {isFullscreen ? "⤡" : "⤢"}
+        </button>
       </div>
 
       {/* Escenari 3D */}
@@ -137,8 +172,8 @@ export function Timeline({
         onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="relative h-[480px] w-full overflow-hidden rounded-3xl"
-        style={{ perspective: "1100px" }}
+        className="relative w-full overflow-hidden rounded-3xl"
+        style={{ perspective: "1100px", height: stageHeight }}
       >
         <div
           aria-hidden
@@ -163,14 +198,16 @@ export function Timeline({
           const translateZ = isActive ? 0 : -80 - abs * 60;
           const scale = isActive ? 1 : 0.86;
           const opacity = abs > 3 ? 0 : 1 - abs * 0.12;
+          const canManage =
+            isActive && (isAdmin || session?.user.id === entry.author_id);
 
           return (
             <div
               key={entry.id}
               className="absolute left-1/2 top-1/2"
               style={{
-                width: CARD_WIDTH,
-                height: CARD_HEIGHT,
+                width: cardWidth,
+                height: cardHeight,
                 zIndex: 100 - abs,
                 opacity: visible ? opacity : 0,
                 pointerEvents: visible && abs <= 3 ? "auto" : "none",
@@ -182,11 +219,10 @@ export function Timeline({
             >
               <TimelineCard
                 entry={entry}
-                canDelete={
-                  isActive &&
-                  (isAdmin || session?.user.id === entry.author_id)
-                }
+                canDelete={canManage}
+                canEdit={canManage}
                 onDelete={onDelete}
+                onEdit={onEdit}
                 onOpen={(e) => (isActive ? setSelected(e) : setActive(index))}
               />
             </div>
@@ -256,7 +292,17 @@ export function Timeline({
       </div>
 
       {selected && (
-        <EntryModal entry={selected} onClose={() => setSelected(null)} />
+        <EntryModal
+          entry={selected}
+          onClose={() => setSelected(null)}
+          canEdit={
+            isAdmin || session?.user.id === selected.author_id
+          }
+          onEdit={(entry) => {
+            setSelected(null);
+            onEdit(entry);
+          }}
+        />
       )}
     </div>
   );

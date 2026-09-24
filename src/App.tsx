@@ -14,6 +14,7 @@ type View = "timeline" | "new" | "login" | "admin";
 export default function App() {
   const { session, loading: sessionLoading } = useSession();
   const [view, setView] = useState<View>("timeline");
+  const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [entriesLoading, setEntriesLoading] = useState(true);
   const [entriesError, setEntriesError] = useState<string | null>(null);
@@ -49,6 +50,9 @@ export default function App() {
     ) {
       setView("timeline");
     }
+    if (view !== "new") {
+      setEditingEntry(null);
+    }
   }, [session, sessionLoading, view]);
 
   async function handleDelete(entry: Entry) {
@@ -62,22 +66,32 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-slate-900">
-      <Header session={session} view={view} onNavigate={setView} />
+      <Header
+        session={session}
+        view={view}
+        onNavigate={setView}
+        onAddNew={() => {
+          setEditingEntry(null);
+          setView("new");
+        }}
+      />
       <main className="mx-auto max-w-3xl px-4 pb-24 pt-8 sm:px-6">
         {view === "login" && !session && <LoginForm />}
 
         {view === "new" && session && (
           <div className="mx-auto max-w-xl">
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-              Afegir una tecnologia
+              {editingEntry ? "Editar la tecnologia" : "Afegir una tecnologia"}
             </h1>
             <p className="mt-2 text-sm text-slate-500">
-              Comparteix una tecnologia rellevant de la història amb la resta
-              de la classe.
+              {editingEntry
+                ? "Actualitza la informació d'aquesta entrada."
+                : "Comparteix una tecnologia rellevant de la història amb la resta de la classe."}
             </p>
             <EntryForm
               session={session}
-              onCreated={() => {
+              entry={editingEntry ?? undefined}
+              onSaved={() => {
                 setView("timeline");
                 loadEntries();
               }}
@@ -115,6 +129,10 @@ export default function App() {
                 entries={entries}
                 session={session}
                 onDelete={handleDelete}
+                onEdit={(entry) => {
+                  setEditingEntry(entry);
+                  setView("new");
+                }}
               />
             )}
           </div>
