@@ -7,7 +7,7 @@ export type Entry = {
   photo_url: string;
   photo_path: string;
   year: number;
-  era: Era | null;
+  era: Era;
   author_id: string;
   created_at: string;
   profiles: { email: string } | null;

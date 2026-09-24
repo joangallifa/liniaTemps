@@ -2,25 +2,21 @@ import type { Session } from "@supabase/supabase-js";
 import type { Entry } from "../types";
 import { TimelineCard } from "./TimelineCard";
 import { ADMIN_EMAIL } from "../lib/supabase";
-import { ERA_LABELS, type Era } from "../lib/era";
+import { ERA_LABELS, ERA_COLORS, type Era } from "../lib/era";
 
-type Item =
-  | { kind: "marker"; era: Era; key: string }
-  | { kind: "entry"; entry: Entry; key: string };
+type Segment = { era: Era; entries: Entry[] };
 
-function buildItems(entries: Entry[]): Item[] {
-  const items: Item[] = [];
-  let lastEra: Era | null = null;
-
-  entries.forEach((entry, index) => {
-    if (entry.era && entry.era !== lastEra) {
-      items.push({ kind: "marker", era: entry.era, key: `era-${index}` });
-      lastEra = entry.era;
+function buildSegments(entries: Entry[]): Segment[] {
+  const segments: Segment[] = [];
+  for (const entry of entries) {
+    const last = segments[segments.length - 1];
+    if (last && last.era === entry.era) {
+      last.entries.push(entry);
+    } else {
+      segments.push({ era: entry.era, entries: [entry] });
     }
-    items.push({ kind: "entry", entry, key: entry.id });
-  });
-
-  return items;
+  }
+  return segments;
 }
 
 export function Timeline({
@@ -44,41 +40,54 @@ export function Timeline({
   }
 
   const isAdmin = session?.user.email === ADMIN_EMAIL;
-  const items = buildItems(entries);
+  const segments = buildSegments(entries);
 
   return (
-    <div className="-mx-4 overflow-x-auto pb-6 sm:-mx-6">
-      <div className="relative inline-grid grid-flow-col auto-cols-[220px] gap-5 px-4 sm:px-6">
+    <div className="-mx-4 overflow-x-auto pb-8 sm:-mx-6">
+      <div className="relative flex items-stretch gap-6 px-4 sm:px-6">
+        {/* Línia contínua: el punt de cada entrada sempre queda 38px per
+            sota del sostre del seu panell (pt-8 + meitat del punt), així
+            que un únic top fix alinea totes les entrades. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-4 top-[18px] h-px bg-slate-200 sm:inset-x-6"
+          className="pointer-events-none absolute inset-x-0 top-[38px] z-0 h-0.5 rounded-full bg-gradient-to-r from-accent-200 via-accent-400 to-accent-200"
         />
 
-        {items.map((item) =>
-          item.kind === "marker" ? (
-            <div key={item.key} className="flex flex-col items-center">
-              <div className="relative z-10 flex h-9 items-center justify-center">
-                <span className="h-3.5 w-0.5 rounded-full bg-accent-500" />
-              </div>
-              <span className="mt-2 whitespace-nowrap rounded-full bg-accent-500 px-3 py-1 text-center text-xs font-semibold text-white shadow-sm">
-                {ERA_LABELS[item.era]}
+        {segments.map((segment, segIndex) => {
+          const colors = ERA_COLORS[segment.era];
+          return (
+            <section
+              key={`${segment.era}-${segIndex}`}
+              className={`relative z-10 flex-shrink-0 rounded-3xl border ${colors.border} ${colors.bg} px-4 pb-4 pt-8 shadow-sm`}
+            >
+              <span
+                className={`absolute -top-3 left-4 whitespace-nowrap rounded-full ${colors.pill} px-3 py-1 text-[11px] font-semibold text-white shadow-sm`}
+              >
+                {ERA_LABELS[segment.era]}
               </span>
-            </div>
-          ) : (
-            <div key={item.key} className="flex flex-col items-stretch">
-              <div className="relative z-10 flex h-9 items-center justify-center">
-                <span className="h-2.5 w-2.5 rounded-full bg-accent-500 ring-4 ring-[#f7f8fb]" />
+
+              <div className="flex items-stretch gap-4">
+                {segment.entries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="flex h-full w-56 flex-shrink-0 flex-col items-center"
+                  >
+                    <span className="h-3 w-3 flex-shrink-0 rounded-full border-2 border-white bg-accent-500 shadow ring-1 ring-accent-200" />
+                    <div className="mt-3 flex w-full flex-1">
+                      <TimelineCard
+                        entry={entry}
+                        canDelete={
+                          isAdmin || session?.user.id === entry.author_id
+                        }
+                        onDelete={onDelete}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="mt-2 flex-1">
-                <TimelineCard
-                  entry={item.entry}
-                  canDelete={isAdmin || session?.user.id === item.entry.author_id}
-                  onDelete={onDelete}
-                />
-              </div>
-            </div>
-          )
-        )}
+            </section>
+          );
+        })}
       </div>
     </div>
   );

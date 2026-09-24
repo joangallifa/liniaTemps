@@ -31,7 +31,7 @@ export function TimelineCard({
   }
 
   return (
-    <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
+    <article className="group relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
       <div className="relative h-32 w-full flex-shrink-0 bg-slate-100">
         <img
           src={entry.photo_url}
