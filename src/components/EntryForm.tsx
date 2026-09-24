@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
-import { ERA_OPTIONS, type Era } from "../lib/era";
+import { ERA_OPTIONS, ERA_RANGES, ERA_LABELS, eraRangeLabel, type Era } from "../lib/era";
 import { sanitizeHtml, htmlToText } from "../lib/richText";
 import { RichTextEditor } from "./RichTextEditor";
 
@@ -15,9 +15,18 @@ export function EntryForm({
   onCreated: () => void;
 }) {
   const [description, setDescription] = useState("");
+  const [eraInput, setEraInput] = useState("");
+  const [yearInput, setYearInput] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const selectedRange = eraInput ? ERA_RANGES[eraInput as Era] : null;
+  const parsedYear = Number.parseInt(yearInput, 10);
+  const yearOutOfRange =
+    selectedRange !== null &&
+    Number.isFinite(parsedYear) &&
+    (parsedYear < selectedRange.min || parsedYear > selectedRange.max);
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -33,8 +42,8 @@ export function EntryForm({
 
     const title = (formData.get("title") as string).trim();
     const descriptionHtml = sanitizeHtml(description);
-    const yearRaw = formData.get("year") as string;
-    const eraRaw = formData.get("era") as string;
+    const yearRaw = yearInput.trim();
+    const eraRaw = eraInput;
     const photo = formData.get("photo") as File;
 
     if (
@@ -54,6 +63,14 @@ export function EntryForm({
     const year = Number.parseInt(yearRaw, 10);
     if (!Number.isFinite(year)) {
       setError("L'any no és vàlid.");
+      return;
+    }
+
+    const range = ERA_RANGES[eraRaw as Era];
+    if (year < range.min || year > range.max) {
+      setError(
+        `Aquest any no correspon a l'època ${ERA_LABELS[eraRaw as Era]} (${eraRangeLabel(eraRaw as Era)}).`
+      );
       return;
     }
 
@@ -122,20 +139,6 @@ export function EntryForm({
 
       <div className="flex gap-4">
         <div className="flex-1">
-          <label htmlFor="year" className="mb-1.5 block text-sm font-medium text-slate-700">
-            Any
-          </label>
-          <input
-            id="year"
-            name="year"
-            type="number"
-            required
-            placeholder="Ex: 1440 (o -3000 per a.C.)"
-            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-accent-400 focus:ring-2 focus:ring-accent-100"
-          />
-        </div>
-
-        <div className="flex-1">
           <label htmlFor="era" className="mb-1.5 block text-sm font-medium text-slate-700">
             Època
           </label>
@@ -143,7 +146,8 @@ export function EntryForm({
             id="era"
             name="era"
             required
-            defaultValue=""
+            value={eraInput}
+            onChange={(e) => setEraInput(e.target.value)}
             className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-accent-400 focus:ring-2 focus:ring-accent-100"
           >
             <option value="" disabled hidden>
@@ -155,6 +159,40 @@ export function EntryForm({
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="flex-1">
+          <label htmlFor="year" className="mb-1.5 block text-sm font-medium text-slate-700">
+            Any aproximat
+          </label>
+          <input
+            id="year"
+            name="year"
+            type="number"
+            required
+            disabled={!selectedRange}
+            min={selectedRange?.min}
+            max={selectedRange?.max}
+            value={yearInput}
+            onChange={(e) => setYearInput(e.target.value)}
+            placeholder={
+              selectedRange ? "Negatiu per aC (ex: -3000)" : "Tria primer l'època"
+            }
+            className={`w-full rounded-xl border px-4 py-2.5 text-sm shadow-sm outline-none transition focus:ring-2 focus:ring-accent-100 disabled:bg-slate-50 disabled:text-slate-400 ${
+              yearOutOfRange
+                ? "border-red-400 focus:border-red-400"
+                : "border-slate-300 focus:border-accent-400"
+            }`}
+          />
+          <p
+            className={`mt-1 text-xs ${
+              yearOutOfRange ? "text-red-600" : "text-slate-400"
+            }`}
+          >
+            {selectedRange
+              ? `${ERA_LABELS[eraInput as Era]}: ${eraRangeLabel(eraInput as Era)}`
+              : "El rang d'anys depèn de l'època."}
+          </p>
         </div>
       </div>
 
