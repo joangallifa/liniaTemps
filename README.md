@@ -24,15 +24,17 @@ polítiques de RLS, no el secret de la clau).
 
 1. Crea un compte/projecte a [supabase.com](https://supabase.com).
 2. Ves a **SQL Editor** i executa el contingut de
-   [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql).
-   Això crea:
-   - la taula `entries` (amb RLS: lectura pública, escriptura només de les
-     pròpies entrades)
+   [`supabase/schema.sql`](supabase/schema.sql). És **idempotent**: es pot
+   tornar a executar sempre que s'actualitzi l'esquema (per exemple en
+   pujar una versió nova de l'app) sense provocar errors. Crea:
+   - la taula `entries` (amb RLS: lectura pública, inserció només d'entrades
+     pròpies, esborrat de les pròpies o de qualsevol si ets l'administrador)
    - la taula `profiles` (còpia mínima de `auth.users` perquè es pugui
      mostrar l'autor)
    - un trigger que **rebutja qualsevol registre amb un correu que no
      acabi en `@umanresa.cat`**
-   - el bucket públic `photos` per a les fotografies
+   - el bucket públic `photos` per a les fotografies, amb les seves
+     polítiques d'accés
 3. Ves a **Authentication → Sign In / Providers → Email** i comprova que
    el mètode "Email OTP / Magic Link" estigui activat (ho està per
    defecte).
