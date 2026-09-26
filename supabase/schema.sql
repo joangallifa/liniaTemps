@@ -222,44 +222,7 @@ create policy "Els usuaris autenticats poden editar la seva anàlisi"
   with check (auth.uid() = author_id);
 
 -- ---------------------------------------------------------------------
--- 7. Definicions de tecnologia: definició pròpia inicial i posterior
---    a la lectura d'un document (una fila per alumne).
--- ---------------------------------------------------------------------
-create table if not exists public.definitions (
-  id                 uuid primary key default gen_random_uuid(),
-  author_id          uuid not null unique references public.profiles (id) on delete cascade,
-  initial_definition text,
-  final_definition   text,
-  created_at         timestamptz not null default now()
-);
-
-alter table public.definitions enable row level security;
-
--- Cada alumne només veu la seva pròpia definició; l'administrador les veu totes.
-drop policy if exists "Veure la definició pròpia, o totes com a administrador" on public.definitions;
-create policy "Veure la definició pròpia, o totes com a administrador"
-  on public.definitions for select
-  to authenticated
-  using (
-    auth.uid() = author_id
-    or auth.email() = 'jgallifa@umanresa.cat'
-  );
-
-drop policy if exists "Els usuaris autenticats poden afegir la seva definició" on public.definitions;
-create policy "Els usuaris autenticats poden afegir la seva definició"
-  on public.definitions for insert
-  to authenticated
-  with check (auth.uid() = author_id);
-
-drop policy if exists "Els usuaris autenticats poden editar la seva definició" on public.definitions;
-create policy "Els usuaris autenticats poden editar la seva definició"
-  on public.definitions for update
-  to authenticated
-  using (auth.uid() = author_id)
-  with check (auth.uid() = author_id);
-
--- ---------------------------------------------------------------------
--- 8. Estat de cada aplicació (ocult / editable / només consulta),
+-- 7. Estat de cada aplicació (ocult / editable / només consulta),
 --    controlat exclusivament per l'administrador des de la pàgina d'inici.
 -- ---------------------------------------------------------------------
 create table if not exists public.app_settings (
@@ -289,6 +252,48 @@ create policy "Només l'administrador pot canviar l'estat de les aplicacions"
   to authenticated
   using (auth.email() = 'jgallifa@umanresa.cat')
   with check (auth.email() = 'jgallifa@umanresa.cat');
+
+-- ---------------------------------------------------------------------
+-- 8. Definicions de tecnologia: definició pròpia inicial i posterior
+--    a la lectura d'un document (una fila per alumne, també l'admin).
+-- ---------------------------------------------------------------------
+create table if not exists public.definitions (
+  id                 uuid primary key default gen_random_uuid(),
+  author_id          uuid not null unique references public.profiles (id) on delete cascade,
+  initial_definition text,
+  final_definition   text,
+  created_at         timestamptz not null default now()
+);
+
+alter table public.definitions enable row level security;
+
+-- Cada alumne només veu la seva pròpia definició, l'administrador les veu
+-- totes, i quan l'app està en mode "només consulta" tothom veu les de
+-- tothom (per posar en comú les respostes un cop tancada l'activitat).
+drop policy if exists "Veure la definició pròpia, o totes com a administrador" on public.definitions;
+create policy "Veure la definició pròpia, o totes com a administrador"
+  on public.definitions for select
+  to authenticated
+  using (
+    auth.uid() = author_id
+    or auth.email() = 'jgallifa@umanresa.cat'
+    or (
+      select status from public.app_settings where app_key = 'definicions'
+    ) = 'CONSULTA'
+  );
+
+drop policy if exists "Els usuaris autenticats poden afegir la seva definició" on public.definitions;
+create policy "Els usuaris autenticats poden afegir la seva definició"
+  on public.definitions for insert
+  to authenticated
+  with check (auth.uid() = author_id);
+
+drop policy if exists "Els usuaris autenticats poden editar la seva definició" on public.definitions;
+create policy "Els usuaris autenticats poden editar la seva definició"
+  on public.definitions for update
+  to authenticated
+  using (auth.uid() = author_id)
+  with check (auth.uid() = author_id);
 
 -- ---------------------------------------------------------------------
 -- 9. Privilegis a nivell de taula

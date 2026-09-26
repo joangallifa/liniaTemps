@@ -79,7 +79,7 @@ export function LandingPage() {
     <div className="flex min-h-screen items-center justify-center px-4 py-16">
       <div className="w-full max-w-2xl text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-          Tecnologia i societat
+          Societats i Tecnologies
         </h1>
         <p className="mt-2 text-sm text-slate-500">
           Tria quina activitat vols obrir.

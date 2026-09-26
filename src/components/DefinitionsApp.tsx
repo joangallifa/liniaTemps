@@ -68,9 +68,18 @@ export function DefinitionsApp() {
       <TopBar isAdmin={isAdmin} />
       <main className="mx-auto max-w-3xl px-4 pb-24 pt-8 sm:px-6">
         {!session && <LoginForm />}
-        {session && isAdmin && <AdminDefinitions />}
-        {session && !isAdmin && (
-          <MyDefinition userId={session.user.id} readOnly={readOnly} />
+
+        {session && isAdmin && (
+          <div className="space-y-10">
+            <MyDefinition userId={session.user.id} readOnly={false} />
+            <DefinitionsRoster excludeUserId={session.user.id} />
+          </div>
+        )}
+
+        {session && !isAdmin && readOnly && <DefinitionsRoster />}
+
+        {session && !isAdmin && !readOnly && (
+          <MyDefinition userId={session.user.id} readOnly={false} />
         )}
       </main>
     </div>
@@ -223,7 +232,7 @@ function MyDefinition({
   );
 }
 
-function AdminDefinitions() {
+function DefinitionsRoster({ excludeUserId }: { excludeUserId?: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Definition[]>([]);
@@ -238,18 +247,20 @@ function AdminDefinitions() {
           setLoading(false);
           return;
         }
-        const sorted = ((data ?? []) as Definition[]).sort((a, b) =>
-          (a.profiles?.email ?? "").localeCompare(b.profiles?.email ?? "")
-        );
+        const sorted = ((data ?? []) as Definition[])
+          .filter((row) => row.author_id !== excludeUserId)
+          .sort((a, b) =>
+            (a.profiles?.email ?? "").localeCompare(b.profiles?.email ?? "")
+          );
         setRows(sorted);
         setLoading(false);
       });
-  }, []);
+  }, [excludeUserId]);
 
   return (
     <div>
       <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-        Definicions de l'alumnat
+        Definicions de la classe
       </h1>
       <p className="mt-1 text-sm text-slate-500">
         {rows.length} {rows.length === 1 ? "alumne ha" : "alumnes han"}{" "}

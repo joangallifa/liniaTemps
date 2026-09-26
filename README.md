@@ -40,7 +40,7 @@ polítiques de RLS, no el secret de la clau).
    defecte).
 4. Ves a **Authentication → URL Configuration** i afegeix com a *Redirect
    URL* l'adreça on servirà GitHub Pages, per exemple:
-   `https://<el-teu-usuari>.github.io/liniaTemps/`
+   `https://<el-teu-usuari>.github.io/societatsitecnologies/`
 5. Ves a **Project Settings → API** i copia:
    - `Project URL` → `VITE_SUPABASE_URL`
    - `anon public` key → `VITE_SUPABASE_ANON_KEY`
@@ -77,7 +77,7 @@ compila i publica automàticament a cada `push` a `main`.
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
 3. Fes push a `main`. Al cap d'uns segons l'acció desplegarà el lloc a
-   `https://<el-teu-usuari>.github.io/liniaTemps/`.
+   `https://<el-teu-usuari>.github.io/societatsitecnologies/`.
 
 > Si el repositori canvia de nom, actualitza també `base` a
 > `vite.config.ts` perquè coincideixi amb `/<nom-del-repo>/`.
