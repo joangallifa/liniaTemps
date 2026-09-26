@@ -79,6 +79,7 @@ export function AnalysisSection({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (readOnly) return;
     setError(null);
     setSaved(false);
 
@@ -133,7 +134,6 @@ export function AnalysisSection({
       )}
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-5">
-      <fieldset disabled={readOnly} className="contents disabled:opacity-70">
         <div>
           <span className="mb-2 block text-xs font-medium text-slate-600">
             Nivell SAMR (Dr. Puentedura)
@@ -142,7 +142,9 @@ export function AnalysisSection({
             {SAMR_OPTIONS.map(([value, label]) => (
               <label
                 key={value}
-                className={`cursor-pointer rounded-xl border p-3 text-xs shadow-sm transition ${
+                className={`rounded-xl border p-3 text-xs shadow-sm transition ${
+                  readOnly ? "cursor-default opacity-70" : "cursor-pointer"
+                } ${
                   samrLevel === value
                     ? "border-accent-400 bg-accent-50"
                     : "border-slate-200 bg-white hover:border-slate-300"
@@ -154,6 +156,7 @@ export function AnalysisSection({
                     name="samr_level"
                     value={value}
                     checked={samrLevel === value}
+                    disabled={readOnly}
                     onChange={() => setSamrLevel(value)}
                     className="h-3.5 w-3.5"
                   />
@@ -185,11 +188,12 @@ export function AnalysisSection({
                   type="text"
                   maxLength={280}
                   value={steep[field.key]}
+                  disabled={readOnly}
                   onChange={(e) =>
                     setSteep((current) => ({ ...current, [field.key]: e.target.value }))
                   }
                   placeholder={field.placeholder}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs shadow-sm outline-none transition focus:border-accent-400 focus:ring-2 focus:ring-accent-100"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs shadow-sm outline-none transition focus:border-accent-400 focus:ring-2 focus:ring-accent-100 disabled:bg-slate-50 disabled:text-slate-500"
                 />
               </div>
             ))}
@@ -210,7 +214,6 @@ export function AnalysisSection({
             {saving ? "Desant..." : "Desa l'anàlisi"}
           </button>
         )}
-      </fieldset>
       </form>
 
       {isAdmin && others.length > 0 && (

@@ -110,11 +110,11 @@ export function Timeline({
   const activeEntry = entries[current];
   const activeColors = ERA_COLORS[activeEntry.era];
   const segments = buildSegments(entries);
-  const spacing = Math.max(150, Math.min(250, stageWidth * 0.32));
-
-  const cardWidth = isFullscreen ? 400 : 320;
-  const cardHeight = isFullscreen ? 520 : 420;
-  const stageHeight = isFullscreen ? "min(680px, 72vh)" : "480px";
+  const availableWidth = stageWidth > 0 ? stageWidth - 16 : 320;
+  const cardWidth = Math.min(isFullscreen ? 400 : 320, availableWidth);
+  const cardHeight = Math.round(cardWidth * (isFullscreen ? 1.3 : 1.3125));
+  const stageHeight = isFullscreen ? "min(680px, 72vh)" : `${cardHeight + 60}px`;
+  const spacing = Math.max(cardWidth * 0.55, Math.min(250, stageWidth * 0.32));
 
   function handleWheel(e: React.WheelEvent) {
     const horizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
@@ -147,7 +147,7 @@ export function Timeline({
       }
     >
       {/* Capçalera de l'entrada activa */}
-      <div className="mb-4 flex items-center justify-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-center gap-2 px-2 sm:gap-3">
         <span
           className={`rounded-full ${activeColors.pill} px-3 py-1 text-xs font-semibold text-white shadow-sm`}
         >

@@ -176,53 +176,7 @@ create policy "Esborrar foto pròpia, o qualsevol com a administrador"
   );
 
 -- ---------------------------------------------------------------------
--- 6. Anàlisi SAMR i STEEP: cada alumne analitza cada tecnologia
--- ---------------------------------------------------------------------
-create table if not exists public.analyses (
-  id             uuid primary key default gen_random_uuid(),
-  entry_id       uuid not null references public.entries (id) on delete cascade,
-  author_id      uuid not null references public.profiles (id) on delete cascade,
-  samr_level     text not null check (
-    samr_level in ('SUBSTITUCIO', 'AUGMENT', 'MODIFICACIO', 'REDEFINICIO')
-  ),
-  steep_social     text not null,
-  steep_tecnologic text not null,
-  steep_economic   text not null,
-  steep_ecologic   text not null,
-  steep_politic    text not null,
-  created_at     timestamptz not null default now(),
-  unique (entry_id, author_id)
-);
-
-create index if not exists analyses_entry_id_idx on public.analyses (entry_id);
-
-alter table public.analyses enable row level security;
-
--- Cada alumne només veu la seva pròpia anàlisi; l'administrador les veu totes.
-drop policy if exists "Veure l'anàlisi pròpia, o totes com a administrador" on public.analyses;
-create policy "Veure l'anàlisi pròpia, o totes com a administrador"
-  on public.analyses for select
-  to authenticated
-  using (
-    auth.uid() = author_id
-    or auth.email() = 'jgallifa@umanresa.cat'
-  );
-
-drop policy if exists "Els usuaris autenticats poden afegir la seva anàlisi" on public.analyses;
-create policy "Els usuaris autenticats poden afegir la seva anàlisi"
-  on public.analyses for insert
-  to authenticated
-  with check (auth.uid() = author_id);
-
-drop policy if exists "Els usuaris autenticats poden editar la seva anàlisi" on public.analyses;
-create policy "Els usuaris autenticats poden editar la seva anàlisi"
-  on public.analyses for update
-  to authenticated
-  using (auth.uid() = author_id)
-  with check (auth.uid() = author_id);
-
--- ---------------------------------------------------------------------
--- 7. Estat de cada aplicació (ocult / editable / només consulta),
+-- 6. Estat de cada aplicació (ocult / editable / només consulta),
 --    controlat exclusivament per l'administrador des de la pàgina d'inici.
 -- ---------------------------------------------------------------------
 create table if not exists public.app_settings (
@@ -254,6 +208,71 @@ create policy "Només l'administrador pot canviar l'estat de les aplicacions"
   with check (auth.email() = 'jgallifa@umanresa.cat');
 
 -- ---------------------------------------------------------------------
+-- 7. Anàlisi SAMR i STEEP: cada alumne analitza cada tecnologia
+-- ---------------------------------------------------------------------
+create table if not exists public.analyses (
+  id             uuid primary key default gen_random_uuid(),
+  entry_id       uuid not null references public.entries (id) on delete cascade,
+  author_id      uuid not null references public.profiles (id) on delete cascade,
+  samr_level     text not null check (
+    samr_level in ('SUBSTITUCIO', 'AUGMENT', 'MODIFICACIO', 'REDEFINICIO')
+  ),
+  steep_social     text not null,
+  steep_tecnologic text not null,
+  steep_economic   text not null,
+  steep_ecologic   text not null,
+  steep_politic    text not null,
+  created_at     timestamptz not null default now(),
+  unique (entry_id, author_id)
+);
+
+create index if not exists analyses_entry_id_idx on public.analyses (entry_id);
+
+alter table public.analyses enable row level security;
+
+-- Cada alumne només veu la seva pròpia anàlisi; l'administrador les veu totes.
+drop policy if exists "Veure l'anàlisi pròpia, o totes com a administrador" on public.analyses;
+create policy "Veure l'anàlisi pròpia, o totes com a administrador"
+  on public.analyses for select
+  to authenticated
+  using (
+    auth.uid() = author_id
+    or auth.email() = 'jgallifa@umanresa.cat'
+  );
+
+-- Només es pot afegir/editar la pròpia anàlisi, i únicament quan l'app
+-- "línia de temps" no estigui en mode "només consulta" (llevat de
+-- l'administrador, que sempre hi pot escriure).
+drop policy if exists "Els usuaris autenticats poden afegir la seva anàlisi" on public.analyses;
+create policy "Els usuaris autenticats poden afegir la seva anàlisi"
+  on public.analyses for insert
+  to authenticated
+  with check (
+    auth.uid() = author_id
+    and (
+      auth.email() = 'jgallifa@umanresa.cat'
+      or (
+        select status from public.app_settings where app_key = 'linia-temps'
+      ) <> 'CONSULTA'
+    )
+  );
+
+drop policy if exists "Els usuaris autenticats poden editar la seva anàlisi" on public.analyses;
+create policy "Els usuaris autenticats poden editar la seva anàlisi"
+  on public.analyses for update
+  to authenticated
+  using (auth.uid() = author_id)
+  with check (
+    auth.uid() = author_id
+    and (
+      auth.email() = 'jgallifa@umanresa.cat'
+      or (
+        select status from public.app_settings where app_key = 'linia-temps'
+      ) <> 'CONSULTA'
+    )
+  );
+
+-- ---------------------------------------------------------------------
 -- 8. Definicions de tecnologia: definició pròpia inicial i posterior
 --    a la lectura d'un document (una fila per alumne, també l'admin).
 -- ---------------------------------------------------------------------
@@ -282,18 +301,37 @@ create policy "Veure la definició pròpia, o totes com a administrador"
     ) = 'CONSULTA'
   );
 
+-- Només es pot afegir/editar la pròpia definició, i únicament quan l'app
+-- "definicions" no estigui en mode "només consulta" (llevat de
+-- l'administrador, que sempre hi pot escriure).
 drop policy if exists "Els usuaris autenticats poden afegir la seva definició" on public.definitions;
 create policy "Els usuaris autenticats poden afegir la seva definició"
   on public.definitions for insert
   to authenticated
-  with check (auth.uid() = author_id);
+  with check (
+    auth.uid() = author_id
+    and (
+      auth.email() = 'jgallifa@umanresa.cat'
+      or (
+        select status from public.app_settings where app_key = 'definicions'
+      ) <> 'CONSULTA'
+    )
+  );
 
 drop policy if exists "Els usuaris autenticats poden editar la seva definició" on public.definitions;
 create policy "Els usuaris autenticats poden editar la seva definició"
   on public.definitions for update
   to authenticated
   using (auth.uid() = author_id)
-  with check (auth.uid() = author_id);
+  with check (
+    auth.uid() = author_id
+    and (
+      auth.email() = 'jgallifa@umanresa.cat'
+      or (
+        select status from public.app_settings where app_key = 'definicions'
+      ) <> 'CONSULTA'
+    )
+  );
 
 -- ---------------------------------------------------------------------
 -- 9. Privilegis a nivell de taula

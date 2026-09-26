@@ -167,7 +167,7 @@ export function EntryForm({
         />
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row">
         <div className="flex-1">
           <label htmlFor="era" className="mb-1.5 block text-sm font-medium text-slate-700">
             Època

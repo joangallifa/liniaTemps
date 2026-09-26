@@ -23,12 +23,12 @@ function TopBar({
 }) {
   return (
     <header className="sticky top-0 z-10 border-b border-slate-200/70 bg-white/80 backdrop-blur">
-      <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4 sm:px-6">
-        <div className="flex items-center gap-3">
+      <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 sm:px-6 sm:py-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link
             to="/"
             title="Torna a l'inici"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
           >
             ←
           </Link>
@@ -37,13 +37,13 @@ function TopBar({
             className="flex items-center gap-2"
           >
             <span className="text-xl">📖</span>
-            <span className="text-base font-semibold tracking-tight text-slate-900">
+            <span className="hidden text-base font-semibold tracking-tight text-slate-900 sm:inline">
               Definicions de tecnologia
             </span>
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {isAdmin && (
             <button
               onClick={() => onNavigate(view === "admin" ? "meva" : "admin")}
@@ -101,26 +101,20 @@ export function DefinitionsApp() {
         )}
 
         {session && isAdmin && view === "meva" && (
-          <MyDefinition userId={session.user.id} readOnly={false} />
+          <MyDefinition userId={session.user.id} />
         )}
 
         {session && !isAdmin && readOnly && <DefinitionsRoster />}
 
         {session && !isAdmin && !readOnly && (
-          <MyDefinition userId={session.user.id} readOnly={false} />
+          <MyDefinition userId={session.user.id} />
         )}
       </main>
     </div>
   );
 }
 
-function MyDefinition({
-  userId,
-  readOnly,
-}: {
-  userId: string;
-  readOnly: boolean;
-}) {
+function MyDefinition({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [initial, setInitial] = useState("");
@@ -190,14 +184,8 @@ function MyDefinition({
       <p className="mt-2 text-sm text-slate-500">
         Aquesta activitat és privada: només tu i el professor la podeu veure.
       </p>
-      {readOnly && (
-        <p className="mt-2 text-sm font-medium text-amber-600">
-          Aquesta activitat és ara mateix només de consulta.
-        </p>
-      )}
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-      <fieldset disabled={readOnly} className="contents disabled:opacity-70">
         <div>
           <label
             htmlFor="initial"
@@ -245,16 +233,13 @@ function MyDefinition({
           </p>
         )}
 
-        {!readOnly && (
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-accent-600 disabled:opacity-60"
-          >
-            {saving ? "Desant..." : "Desa la definició"}
-          </button>
-        )}
-      </fieldset>
+        <button
+          type="submit"
+          disabled={saving}
+          className="w-full rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-accent-600 disabled:opacity-60"
+        >
+          {saving ? "Desant..." : "Desa la definició"}
+        </button>
       </form>
     </div>
   );

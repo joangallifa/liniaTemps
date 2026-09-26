@@ -21,12 +21,12 @@ export function Header({
 
   return (
     <header className="sticky top-0 z-10 border-b border-slate-200/70 bg-white/80 backdrop-blur">
-      <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4 sm:px-6">
-        <div className="flex items-center gap-3">
+      <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 sm:px-6 sm:py-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link
             to="/"
             title="Torna a l'inici"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
           >
             ←
           </Link>
@@ -35,13 +35,13 @@ export function Header({
             className="flex items-center gap-2"
           >
             <span className="text-xl">🕰️</span>
-            <span className="text-base font-semibold tracking-tight text-slate-900">
+            <span className="hidden text-base font-semibold tracking-tight text-slate-900 sm:inline">
               Línia del temps tecnològica
             </span>
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {session ? (
             <>
               {isAdmin && (
@@ -55,14 +55,15 @@ export function Header({
               {!readOnly && (
                 <button
                   onClick={onAddNew}
-                  className="rounded-full bg-accent-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-accent-600"
+                  className="rounded-full bg-accent-500 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-accent-600 sm:px-4"
                 >
-                  + Afegir tecnologia
+                  <span className="sm:hidden">+ Afegir</span>
+                  <span className="hidden sm:inline">+ Afegir tecnologia</span>
                 </button>
               )}
               <button
                 onClick={() => supabase.auth.signOut()}
-                className="rounded-full px-4 py-2 text-sm font-medium text-slate-500 transition hover:text-slate-800"
+                className="rounded-full px-3 py-2 text-sm font-medium text-slate-500 transition hover:text-slate-800 sm:px-4"
               >
                 Surt
               </button>
