@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import type { Session } from "@supabase/supabase-js";
 import { supabase, ADMIN_EMAIL } from "../lib/supabase";
 import { useSession } from "../hooks/useSession";
 import { useAppStatus } from "../hooks/useAppStatus";
@@ -7,7 +8,19 @@ import type { Definition } from "../types";
 import { LoginForm } from "./LoginForm";
 import { AppUnavailable } from "./AppUnavailable";
 
-function TopBar({ isAdmin }: { isAdmin: boolean }) {
+type View = "meva" | "admin";
+
+function TopBar({
+  session,
+  isAdmin,
+  view,
+  onNavigate,
+}: {
+  session: Session | null;
+  isAdmin: boolean;
+  view: View;
+  onNavigate: (view: View) => void;
+}) {
   return (
     <header className="sticky top-0 z-10 border-b border-slate-200/70 bg-white/80 backdrop-blur">
       <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4 sm:px-6">
@@ -19,22 +32,35 @@ function TopBar({ isAdmin }: { isAdmin: boolean }) {
           >
             ←
           </Link>
-          <span className="flex items-center gap-2">
+          <button
+            onClick={() => onNavigate("meva")}
+            className="flex items-center gap-2"
+          >
             <span className="text-xl">📖</span>
             <span className="text-base font-semibold tracking-tight text-slate-900">
               Definicions de tecnologia
             </span>
-          </span>
+          </button>
         </div>
 
-        {isAdmin && (
-          <button
-            onClick={() => supabase.auth.signOut()}
-            className="rounded-full px-4 py-2 text-sm font-medium text-slate-500 transition hover:text-slate-800"
-          >
-            Surt
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <button
+              onClick={() => onNavigate(view === "admin" ? "meva" : "admin")}
+              className="rounded-full px-3 py-2 text-sm font-medium text-slate-500 transition hover:text-slate-800"
+            >
+              Administració
+            </button>
+          )}
+          {session && (
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="rounded-full px-4 py-2 text-sm font-medium text-slate-500 transition hover:text-slate-800"
+            >
+              Surt
+            </button>
+          )}
+        </div>
       </div>
     </header>
   );
@@ -43,11 +69,12 @@ function TopBar({ isAdmin }: { isAdmin: boolean }) {
 export function DefinitionsApp() {
   const { session, loading: sessionLoading } = useSession();
   const { status: appStatus, loading: statusLoading } = useAppStatus("definicions");
+  const [view, setView] = useState<View>("meva");
 
   if (sessionLoading || statusLoading) {
     return (
       <div className="min-h-screen text-slate-900">
-        <TopBar isAdmin={false} />
+        <TopBar session={null} isAdmin={false} view={view} onNavigate={setView} />
         <main className="mx-auto max-w-3xl px-4 pb-24 pt-8 sm:px-6">
           <p className="text-sm text-slate-400">Carregant...</p>
         </main>
@@ -65,15 +92,16 @@ export function DefinitionsApp() {
 
   return (
     <div className="min-h-screen text-slate-900">
-      <TopBar isAdmin={isAdmin} />
+      <TopBar session={session} isAdmin={isAdmin} view={view} onNavigate={setView} />
       <main className="mx-auto max-w-3xl px-4 pb-24 pt-8 sm:px-6">
         {!session && <LoginForm />}
 
-        {session && isAdmin && (
-          <div className="space-y-10">
-            <MyDefinition userId={session.user.id} readOnly={false} />
-            <DefinitionsRoster excludeUserId={session.user.id} />
-          </div>
+        {session && isAdmin && view === "admin" && (
+          <DefinitionsRoster excludeUserId={session.user.id} />
+        )}
+
+        {session && isAdmin && view === "meva" && (
+          <MyDefinition userId={session.user.id} readOnly={false} />
         )}
 
         {session && !isAdmin && readOnly && <DefinitionsRoster />}
