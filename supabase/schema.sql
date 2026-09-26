@@ -222,7 +222,76 @@ create policy "Els usuaris autenticats poden editar la seva anàlisi"
   with check (auth.uid() = author_id);
 
 -- ---------------------------------------------------------------------
--- 7. Privilegis a nivell de taula
+-- 7. Definicions de tecnologia: definició pròpia inicial i posterior
+--    a la lectura d'un document (una fila per alumne).
+-- ---------------------------------------------------------------------
+create table if not exists public.definitions (
+  id                 uuid primary key default gen_random_uuid(),
+  author_id          uuid not null unique references public.profiles (id) on delete cascade,
+  initial_definition text,
+  final_definition   text,
+  created_at         timestamptz not null default now()
+);
+
+alter table public.definitions enable row level security;
+
+-- Cada alumne només veu la seva pròpia definició; l'administrador les veu totes.
+drop policy if exists "Veure la definició pròpia, o totes com a administrador" on public.definitions;
+create policy "Veure la definició pròpia, o totes com a administrador"
+  on public.definitions for select
+  to authenticated
+  using (
+    auth.uid() = author_id
+    or auth.email() = 'jgallifa@umanresa.cat'
+  );
+
+drop policy if exists "Els usuaris autenticats poden afegir la seva definició" on public.definitions;
+create policy "Els usuaris autenticats poden afegir la seva definició"
+  on public.definitions for insert
+  to authenticated
+  with check (auth.uid() = author_id);
+
+drop policy if exists "Els usuaris autenticats poden editar la seva definició" on public.definitions;
+create policy "Els usuaris autenticats poden editar la seva definició"
+  on public.definitions for update
+  to authenticated
+  using (auth.uid() = author_id)
+  with check (auth.uid() = author_id);
+
+-- ---------------------------------------------------------------------
+-- 8. Estat de cada aplicació (ocult / editable / només consulta),
+--    controlat exclusivament per l'administrador des de la pàgina d'inici.
+-- ---------------------------------------------------------------------
+create table if not exists public.app_settings (
+  app_key    text primary key,
+  status     text not null default 'EDITABLE' check (
+    status in ('OCULT', 'EDITABLE', 'CONSULTA')
+  ),
+  updated_at timestamptz not null default now()
+);
+
+insert into public.app_settings (app_key, status) values
+  ('linia-temps', 'EDITABLE'),
+  ('definicions', 'EDITABLE')
+on conflict (app_key) do nothing;
+
+alter table public.app_settings enable row level security;
+
+-- Tothom (fins i tot sense sessió) ha de poder saber quines apps es veuen.
+drop policy if exists "L'estat de les aplicacions és consultable per tothom" on public.app_settings;
+create policy "L'estat de les aplicacions és consultable per tothom"
+  on public.app_settings for select
+  using (true);
+
+drop policy if exists "Només l'administrador pot canviar l'estat de les aplicacions" on public.app_settings;
+create policy "Només l'administrador pot canviar l'estat de les aplicacions"
+  on public.app_settings for update
+  to authenticated
+  using (auth.email() = 'jgallifa@umanresa.cat')
+  with check (auth.email() = 'jgallifa@umanresa.cat');
+
+-- ---------------------------------------------------------------------
+-- 9. Privilegis a nivell de taula
 --    (RLS només filtra files; sense aquests GRANT, PostgREST respon
 --    "permission denied for table ...")
 -- ---------------------------------------------------------------------
@@ -232,8 +301,11 @@ grant select                 on public.profiles to anon, authenticated;
 grant select                         on public.entries to anon;
 grant select, insert, update, delete on public.entries to authenticated;
 grant select, insert, update         on public.analyses to authenticated;
+grant select, insert, update         on public.definitions to authenticated;
+grant select                 on public.app_settings to anon, authenticated;
+grant update                         on public.app_settings to authenticated;
 
 -- ---------------------------------------------------------------------
--- 8. Refresca la caché d'esquema de PostgREST
+-- 10. Refresca la caché d'esquema de PostgREST
 -- ---------------------------------------------------------------------
 notify pgrst, 'reload schema';

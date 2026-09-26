@@ -18,9 +18,11 @@ const EMPTY_STEEP: SteepValues = {
 export function AnalysisSection({
   entry,
   session,
+  readOnly = false,
 }: {
   entry: Entry;
   session: Session;
+  readOnly?: boolean;
 }) {
   const isAdmin = session.user.email === ADMIN_EMAIL;
 
@@ -124,8 +126,14 @@ export function AnalysisSection({
       <p className="mt-1 text-xs text-slate-500">
         Aquesta anàlisi és privada: només tu i el professor la podeu veure.
       </p>
+      {readOnly && (
+        <p className="mt-2 text-xs font-medium text-amber-600">
+          Aquesta activitat és ara mateix només de consulta.
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-5">
+      <fieldset disabled={readOnly} className="contents disabled:opacity-70">
         <div>
           <span className="mb-2 block text-xs font-medium text-slate-600">
             Nivell SAMR (Dr. Puentedura)
@@ -193,13 +201,16 @@ export function AnalysisSection({
           <p className="text-xs font-medium text-emerald-600">Anàlisi desada.</p>
         )}
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="w-full rounded-xl bg-accent-500 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-accent-600 disabled:opacity-60"
-        >
-          {saving ? "Desant..." : "Desa l'anàlisi"}
-        </button>
+        {!readOnly && (
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full rounded-xl bg-accent-500 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-accent-600 disabled:opacity-60"
+          >
+            {saving ? "Desant..." : "Desa l'anàlisi"}
+          </button>
+        )}
+      </fieldset>
       </form>
 
       {isAdmin && others.length > 0 && (

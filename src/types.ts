@@ -27,3 +27,12 @@ export type Analysis = {
   created_at: string;
   profiles: { email: string } | null;
 };
+
+export type Definition = {
+  id: string;
+  author_id: string;
+  initial_definition: string | null;
+  final_definition: string | null;
+  created_at: string;
+  profiles: { email: string } | null;
+};
