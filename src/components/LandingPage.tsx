@@ -12,20 +12,20 @@ import {
 
 const APPS: { key: AppKey; to: string; icon: string; title: string; description: string }[] = [
   {
-    key: "linia-temps",
-    to: "/linia-temps",
-    icon: "🕰️",
-    title: "Línia del temps",
-    description:
-      "Explora i afegeix tecnologies al llarg de la història, amb anàlisi SAMR i STEEP.",
-  },
-  {
     key: "definicions",
     to: "/definicions",
     icon: "📖",
     title: "Definicions de tecnologia",
     description:
       "Escriu la teva definició abans i després de llegir el document.",
+  },
+  {
+    key: "linia-temps",
+    to: "/linia-temps",
+    icon: "🕰️",
+    title: "Línia del temps",
+    description:
+      "Explora i afegeix tecnologies al llarg de la història, amb anàlisi SAMR i STEEP.",
   },
 ];
 
