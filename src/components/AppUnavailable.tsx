@@ -1,8 +1,21 @@
 import { Link } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import { useSession } from "../hooks/useSession";
 
 export function AppUnavailable() {
+  const { session } = useSession();
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
+      {session && (
+        <button
+          onClick={() => supabase.auth.signOut()}
+          className="absolute right-4 top-4 rounded-full px-4 py-2 text-sm font-medium text-slate-500 transition hover:text-slate-800 sm:right-6 sm:top-6"
+        >
+          Surt
+        </button>
+      )}
+
       <span className="text-4xl">🔒</span>
       <p className="text-sm text-slate-500">
         Aquesta activitat no està disponible ara mateix.

@@ -76,7 +76,16 @@ export function LandingPage() {
   );
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-16">
+    <div className="relative flex min-h-screen items-center justify-center px-4 py-16">
+      {session && (
+        <button
+          onClick={() => supabase.auth.signOut()}
+          className="absolute right-4 top-4 rounded-full px-4 py-2 text-sm font-medium text-slate-500 transition hover:text-slate-800 sm:right-6 sm:top-6"
+        >
+          Surt
+        </button>
+      )}
+
       <div className="w-full max-w-2xl text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
           Societats i Tecnologies
