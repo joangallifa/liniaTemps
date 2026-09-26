@@ -294,6 +294,7 @@ export function Timeline({
       {selected && (
         <EntryModal
           entry={selected}
+          session={session}
           onClose={() => setSelected(null)}
           canEdit={
             isAdmin || session?.user.id === selected.author_id

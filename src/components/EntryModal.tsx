@@ -1,16 +1,20 @@
 import { useEffect } from "react";
+import type { Session } from "@supabase/supabase-js";
 import type { Entry } from "../types";
 import { ERA_LABELS } from "../lib/era";
 import { formatYear, authorLabel, initials } from "../lib/entryDisplay";
 import { toDisplayHtml } from "../lib/richText";
+import { AnalysisSection } from "./AnalysisSection";
 
 export function EntryModal({
   entry,
+  session,
   onClose,
   canEdit,
   onEdit,
 }: {
   entry: Entry;
+  session: Session | null;
   onClose: () => void;
   canEdit: boolean;
   onEdit: (entry: Entry) => void;
@@ -85,6 +89,8 @@ export function EntryModal({
               </button>
             )}
           </div>
+
+          {session && <AnalysisSection entry={entry} session={session} />}
         </div>
       </div>
     </div>

@@ -176,7 +176,53 @@ create policy "Esborrar foto pròpia, o qualsevol com a administrador"
   );
 
 -- ---------------------------------------------------------------------
--- 6. Privilegis a nivell de taula
+-- 6. Anàlisi SAMR i STEEP: cada alumne analitza cada tecnologia
+-- ---------------------------------------------------------------------
+create table if not exists public.analyses (
+  id             uuid primary key default gen_random_uuid(),
+  entry_id       uuid not null references public.entries (id) on delete cascade,
+  author_id      uuid not null references public.profiles (id) on delete cascade,
+  samr_level     text not null check (
+    samr_level in ('SUBSTITUCIO', 'AUGMENT', 'MODIFICACIO', 'REDEFINICIO')
+  ),
+  steep_social     text not null,
+  steep_tecnologic text not null,
+  steep_economic   text not null,
+  steep_ecologic   text not null,
+  steep_politic    text not null,
+  created_at     timestamptz not null default now(),
+  unique (entry_id, author_id)
+);
+
+create index if not exists analyses_entry_id_idx on public.analyses (entry_id);
+
+alter table public.analyses enable row level security;
+
+-- Cada alumne només veu la seva pròpia anàlisi; l'administrador les veu totes.
+drop policy if exists "Veure l'anàlisi pròpia, o totes com a administrador" on public.analyses;
+create policy "Veure l'anàlisi pròpia, o totes com a administrador"
+  on public.analyses for select
+  to authenticated
+  using (
+    auth.uid() = author_id
+    or auth.email() = 'jgallifa@umanresa.cat'
+  );
+
+drop policy if exists "Els usuaris autenticats poden afegir la seva anàlisi" on public.analyses;
+create policy "Els usuaris autenticats poden afegir la seva anàlisi"
+  on public.analyses for insert
+  to authenticated
+  with check (auth.uid() = author_id);
+
+drop policy if exists "Els usuaris autenticats poden editar la seva anàlisi" on public.analyses;
+create policy "Els usuaris autenticats poden editar la seva anàlisi"
+  on public.analyses for update
+  to authenticated
+  using (auth.uid() = author_id)
+  with check (auth.uid() = author_id);
+
+-- ---------------------------------------------------------------------
+-- 7. Privilegis a nivell de taula
 --    (RLS només filtra files; sense aquests GRANT, PostgREST respon
 --    "permission denied for table ...")
 -- ---------------------------------------------------------------------
@@ -185,8 +231,9 @@ grant usage on schema public to anon, authenticated;
 grant select                 on public.profiles to anon, authenticated;
 grant select                         on public.entries to anon;
 grant select, insert, update, delete on public.entries to authenticated;
+grant select, insert, update         on public.analyses to authenticated;
 
 -- ---------------------------------------------------------------------
--- 7. Refresca la caché d'esquema de PostgREST
+-- 8. Refresca la caché d'esquema de PostgREST
 -- ---------------------------------------------------------------------
 notify pgrst, 'reload schema';
