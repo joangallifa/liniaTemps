@@ -78,27 +78,9 @@ create policy "Els usuaris autenticats poden afegir les seves entrades"
   to authenticated
   with check (auth.uid() = author_id);
 
-drop policy if exists "Actualitzar entrada pròpia, o qualsevol com a administrador" on public.entries;
-create policy "Actualitzar entrada pròpia, o qualsevol com a administrador"
-  on public.entries for update
-  to authenticated
-  using (
-    auth.uid() = author_id
-    or auth.email() = 'jgallifa@umanresa.cat'
-  )
-  with check (
-    auth.uid() = author_id
-    or auth.email() = 'jgallifa@umanresa.cat'
-  );
-
-drop policy if exists "Esborrar entrada pròpia, o qualsevol com a administrador" on public.entries;
-create policy "Esborrar entrada pròpia, o qualsevol com a administrador"
-  on public.entries for delete
-  to authenticated
-  using (
-    auth.uid() = author_id
-    or auth.email() = 'jgallifa@umanresa.cat'
-  );
+-- Les polítiques d'actualitzar/esborrar entrades depenen de l'estat de
+-- l'app "línia de temps" (taula app_settings) i es defineixen més avall,
+-- un cop creada aquesta taula (secció 6).
 
 -- ---------------------------------------------------------------------
 -- 4. Funcions i triggers sobre auth.users
@@ -176,21 +158,36 @@ create policy "Esborrar foto pròpia, o qualsevol com a administrador"
   );
 
 -- ---------------------------------------------------------------------
--- 6. Estat de cada aplicació (ocult / editable / només consulta),
---    controlat exclusivament per l'administrador des de la pàgina d'inici.
+-- 6. Estat de cada aplicació, controlat exclusivament per l'administrador
+--    des de la pàgina d'inici. "Definicions" té un únic estat editable;
+--    "línia de temps" el separa en dues fases (tecnologies i metodologies
+--    SAMR/STEEP) perquè no es puguin editar totes dues coses alhora.
 -- ---------------------------------------------------------------------
 create table if not exists public.app_settings (
   app_key    text primary key,
-  status     text not null default 'EDITABLE' check (
-    status in ('OCULT', 'EDITABLE', 'CONSULTA')
-  ),
+  status     text not null default 'EDITABLE',
   updated_at timestamptz not null default now()
 );
 
+-- Amplia els valors vàlids per a instal·lacions que ja tenien la taula
+-- creada amb el check antic (OCULT/EDITABLE/CONSULTA únicament).
+alter table public.app_settings drop constraint if exists app_settings_status_check;
+alter table public.app_settings add constraint app_settings_status_check
+  check (status in (
+    'OCULT', 'EDITABLE', 'EDITAR_TECNOLOGIES', 'EDITAR_METODOLOGIES', 'CONSULTA'
+  ));
+
 insert into public.app_settings (app_key, status) values
-  ('linia-temps', 'EDITABLE'),
+  ('linia-temps', 'EDITAR_TECNOLOGIES'),
   ('definicions', 'EDITABLE')
 on conflict (app_key) do nothing;
+
+-- "línia de temps" ja no fa servir l'estat genèric "EDITABLE": les
+-- instal·lacions existents es migren a la primera fase (tecnologies).
+update public.app_settings
+   set status = 'EDITAR_TECNOLOGIES'
+ where app_key = 'linia-temps'
+   and status = 'EDITABLE';
 
 alter table public.app_settings enable row level security;
 
@@ -206,6 +203,47 @@ create policy "Només l'administrador pot canviar l'estat de les aplicacions"
   to authenticated
   using (auth.email() = 'jgallifa@umanresa.cat')
   with check (auth.email() = 'jgallifa@umanresa.cat');
+
+-- Actualitzar/esborrar una entrada pròpia, o qualsevol com a administrador,
+-- excepte en mode "només consulta" o durant la fase "Editar metodologies":
+-- en aquests dos estats ningú pot tocar cap tecnologia, ni tan sols
+-- l'administrador. (En "Ocult" i "Editar tecnologies" es manté igual.)
+drop policy if exists "Actualitzar entrada pròpia, o qualsevol com a administrador" on public.entries;
+create policy "Actualitzar entrada pròpia, o qualsevol com a administrador"
+  on public.entries for update
+  to authenticated
+  using (
+    (
+      auth.uid() = author_id
+      or auth.email() = 'jgallifa@umanresa.cat'
+    )
+    and (
+      select status from public.app_settings where app_key = 'linia-temps'
+    ) not in ('CONSULTA', 'EDITAR_METODOLOGIES')
+  )
+  with check (
+    (
+      auth.uid() = author_id
+      or auth.email() = 'jgallifa@umanresa.cat'
+    )
+    and (
+      select status from public.app_settings where app_key = 'linia-temps'
+    ) not in ('CONSULTA', 'EDITAR_METODOLOGIES')
+  );
+
+drop policy if exists "Esborrar entrada pròpia, o qualsevol com a administrador" on public.entries;
+create policy "Esborrar entrada pròpia, o qualsevol com a administrador"
+  on public.entries for delete
+  to authenticated
+  using (
+    (
+      auth.uid() = author_id
+      or auth.email() = 'jgallifa@umanresa.cat'
+    )
+    and (
+      select status from public.app_settings where app_key = 'linia-temps'
+    ) not in ('CONSULTA', 'EDITAR_METODOLOGIES')
+  );
 
 -- ---------------------------------------------------------------------
 -- 7. Anàlisi SAMR i STEEP: cada alumne analitza cada tecnologia
@@ -230,7 +268,9 @@ create index if not exists analyses_entry_id_idx on public.analyses (entry_id);
 
 alter table public.analyses enable row level security;
 
--- Cada alumne només veu la seva pròpia anàlisi; l'administrador les veu totes.
+-- Cada alumne només veu la seva pròpia anàlisi, l'administrador les veu
+-- totes, i quan "línia de temps" està en mode "només consulta" tothom veu
+-- les de tothom (per posar en comú les respostes un cop tancada l'activitat).
 drop policy if exists "Veure l'anàlisi pròpia, o totes com a administrador" on public.analyses;
 create policy "Veure l'anàlisi pròpia, o totes com a administrador"
   on public.analyses for select
@@ -238,11 +278,15 @@ create policy "Veure l'anàlisi pròpia, o totes com a administrador"
   using (
     auth.uid() = author_id
     or auth.email() = 'jgallifa@umanresa.cat'
+    or (
+      select status from public.app_settings where app_key = 'linia-temps'
+    ) = 'CONSULTA'
   );
 
--- Només es pot afegir/editar la pròpia anàlisi, i únicament quan l'app
--- "línia de temps" no estigui en mode "només consulta" (llevat de
--- l'administrador, que sempre hi pot escriure).
+-- Només es pot afegir/editar la pròpia anàlisi, i mai en mode "només
+-- consulta" ni durant la fase "Editar tecnologies" (les metodologies
+-- encara no estan actives): ningú hi pot escriure, ni tan sols
+-- l'administrador.
 drop policy if exists "Els usuaris autenticats poden afegir la seva anàlisi" on public.analyses;
 create policy "Els usuaris autenticats poden afegir la seva anàlisi"
   on public.analyses for insert
@@ -250,11 +294,8 @@ create policy "Els usuaris autenticats poden afegir la seva anàlisi"
   with check (
     auth.uid() = author_id
     and (
-      auth.email() = 'jgallifa@umanresa.cat'
-      or (
-        select status from public.app_settings where app_key = 'linia-temps'
-      ) <> 'CONSULTA'
-    )
+      select status from public.app_settings where app_key = 'linia-temps'
+    ) not in ('CONSULTA', 'EDITAR_TECNOLOGIES')
   );
 
 drop policy if exists "Els usuaris autenticats poden editar la seva anàlisi" on public.analyses;
@@ -265,11 +306,8 @@ create policy "Els usuaris autenticats poden editar la seva anàlisi"
   with check (
     auth.uid() = author_id
     and (
-      auth.email() = 'jgallifa@umanresa.cat'
-      or (
-        select status from public.app_settings where app_key = 'linia-temps'
-      ) <> 'CONSULTA'
-    )
+      select status from public.app_settings where app_key = 'linia-temps'
+    ) not in ('CONSULTA', 'EDITAR_TECNOLOGIES')
   );
 
 -- ---------------------------------------------------------------------
@@ -301,9 +339,9 @@ create policy "Veure la definició pròpia, o totes com a administrador"
     ) = 'CONSULTA'
   );
 
--- Només es pot afegir/editar la pròpia definició, i únicament quan l'app
--- "definicions" no estigui en mode "només consulta" (llevat de
--- l'administrador, que sempre hi pot escriure).
+-- Només es pot afegir/editar la pròpia definició, i mai quan "definicions"
+-- estigui en mode "només consulta": aleshores ningú hi pot escriure, ni
+-- tan sols l'administrador.
 drop policy if exists "Els usuaris autenticats poden afegir la seva definició" on public.definitions;
 create policy "Els usuaris autenticats poden afegir la seva definició"
   on public.definitions for insert
@@ -311,11 +349,8 @@ create policy "Els usuaris autenticats poden afegir la seva definició"
   with check (
     auth.uid() = author_id
     and (
-      auth.email() = 'jgallifa@umanresa.cat'
-      or (
-        select status from public.app_settings where app_key = 'definicions'
-      ) <> 'CONSULTA'
-    )
+      select status from public.app_settings where app_key = 'definicions'
+    ) <> 'CONSULTA'
   );
 
 drop policy if exists "Els usuaris autenticats poden editar la seva definició" on public.definitions;
@@ -326,11 +361,8 @@ create policy "Els usuaris autenticats poden editar la seva definició"
   with check (
     auth.uid() = author_id
     and (
-      auth.email() = 'jgallifa@umanresa.cat'
-      or (
-        select status from public.app_settings where app_key = 'definicions'
-      ) <> 'CONSULTA'
-    )
+      select status from public.app_settings where app_key = 'definicions'
+    ) <> 'CONSULTA'
   );
 
 -- ---------------------------------------------------------------------

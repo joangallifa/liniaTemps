@@ -27,13 +27,17 @@ const MAX_VISIBLE_OFFSET = 4;
 export function Timeline({
   entries,
   session,
-  readOnly = false,
+  entriesLocked = false,
+  showAnalysis = true,
+  analysisReadOnly = false,
   onDelete,
   onEdit,
 }: {
   entries: Entry[];
   session: Session | null;
-  readOnly?: boolean;
+  entriesLocked?: boolean;
+  showAnalysis?: boolean;
+  analysisReadOnly?: boolean;
   onDelete: (entry: Entry) => Promise<void>;
   onEdit: (entry: Entry) => void;
 }) {
@@ -202,7 +206,7 @@ export function Timeline({
           const opacity = abs > 3 ? 0 : 1 - abs * 0.12;
           const canManage =
             isActive &&
-            !readOnly &&
+            !entriesLocked &&
             (isAdmin || session?.user.id === entry.author_id);
 
           return (
@@ -299,10 +303,12 @@ export function Timeline({
         <EntryModal
           entry={selected}
           session={session}
-          readOnly={readOnly}
+          showAnalysis={showAnalysis}
+          analysisReadOnly={analysisReadOnly}
           onClose={() => setSelected(null)}
           canEdit={
-            !readOnly && (isAdmin || session?.user.id === selected.author_id)
+            !entriesLocked &&
+            (isAdmin || session?.user.id === selected.author_id)
           }
           onEdit={(entry) => {
             setSelected(null);

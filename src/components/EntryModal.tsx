@@ -9,14 +9,16 @@ import { AnalysisSection } from "./AnalysisSection";
 export function EntryModal({
   entry,
   session,
-  readOnly = false,
+  showAnalysis = true,
+  analysisReadOnly = false,
   onClose,
   canEdit,
   onEdit,
 }: {
   entry: Entry;
   session: Session | null;
-  readOnly?: boolean;
+  showAnalysis?: boolean;
+  analysisReadOnly?: boolean;
   onClose: () => void;
   canEdit: boolean;
   onEdit: (entry: Entry) => void;
@@ -92,8 +94,12 @@ export function EntryModal({
             )}
           </div>
 
-          {session && (
-            <AnalysisSection entry={entry} session={session} readOnly={readOnly} />
+          {session && showAnalysis && (
+            <AnalysisSection
+              entry={entry}
+              session={session}
+              readOnly={analysisReadOnly}
+            />
           )}
         </div>
       </div>

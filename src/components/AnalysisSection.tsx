@@ -56,7 +56,11 @@ export function AnalysisSection({
         const rows = (data ?? []) as Analysis[];
         const mine = rows.find((a) => a.author_id === session.user.id) ?? null;
 
-        setOthers(isAdmin ? rows.filter((a) => a.author_id !== session.user.id) : []);
+        setOthers(
+          isAdmin || readOnly
+            ? rows.filter((a) => a.author_id !== session.user.id)
+            : []
+        );
         setSamrLevel(mine?.samr_level ?? "");
         setSteep(
           mine
@@ -75,7 +79,7 @@ export function AnalysisSection({
     return () => {
       cancelled = true;
     };
-  }, [entry.id, session.user.id, isAdmin]);
+  }, [entry.id, session.user.id, isAdmin, readOnly]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -216,10 +220,11 @@ export function AnalysisSection({
         )}
       </form>
 
-      {isAdmin && others.length > 0 && (
+      {(isAdmin || readOnly) && others.length > 0 && (
         <div className="mt-6 border-t border-slate-100 pt-4">
           <h4 className="text-xs font-semibold text-slate-700">
-            Anàlisis de l'alumnat ({others.length})
+            {isAdmin ? "Anàlisis de l'alumnat" : "Anàlisis dels companys"} (
+            {others.length})
           </h4>
           <ul className="mt-3 space-y-3">
             {others.map((analysis) => (

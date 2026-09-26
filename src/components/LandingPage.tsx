@@ -3,8 +3,8 @@ import { Link } from "react-router-dom";
 import { useSession } from "../hooks/useSession";
 import { supabase, ADMIN_EMAIL } from "../lib/supabase";
 import {
-  APP_STATUSES,
   APP_STATUS_LABELS,
+  APP_STATUS_OPTIONS,
   DEFAULT_APP_STATUS,
   type AppKey,
   type AppStatus,
@@ -46,7 +46,7 @@ export function LandingPage() {
       .then(({ data }) => {
         if (cancelled) return;
         const map = {} as Record<AppKey, AppStatus>;
-        for (const app of APPS) map[app.key] = DEFAULT_APP_STATUS;
+        for (const app of APPS) map[app.key] = DEFAULT_APP_STATUS[app.key];
         for (const row of data ?? []) {
           map[row.app_key as AppKey] = row.status as AppStatus;
         }
@@ -113,17 +113,15 @@ export function LandingPage() {
                   <span className="text-xs text-slate-500">
                     {app.description}
                   </span>
-                  {status !== "EDITABLE" && (
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
-                        hidden
-                          ? "bg-slate-100 text-slate-500"
-                          : "bg-amber-50 text-amber-700"
-                      }`}
-                    >
-                      {APP_STATUS_LABELS[status]}
-                    </span>
-                  )}
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+                      hidden
+                        ? "bg-slate-100 text-slate-500"
+                        : "bg-amber-50 text-amber-700"
+                    }`}
+                  >
+                    {APP_STATUS_LABELS[status]}
+                  </span>
                 </Link>
 
                 {isAdmin && (
@@ -134,7 +132,7 @@ export function LandingPage() {
                     }
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs shadow-sm outline-none transition focus:border-accent-400 focus:ring-2 focus:ring-accent-100"
                   >
-                    {APP_STATUSES.map((s) => (
+                    {APP_STATUS_OPTIONS[app.key].map((s) => (
                       <option key={s} value={s}>
                         {APP_STATUS_LABELS[s]}
                       </option>

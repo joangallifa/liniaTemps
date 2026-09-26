@@ -73,14 +73,23 @@ export function TimelineApp() {
     return <AppUnavailable />;
   }
 
-  const readOnly = appStatus === "CONSULTA" && !isAdmin;
+  // Les tecnologies només es poden editar/esborrar durant la fase "Editar
+  // tecnologies" (i mentre l'app és oculta, per preparar contingut); en
+  // "només consulta" i "Editar metodologies" ningú les pot tocar, ni tan
+  // sols l'administrador.
+  const entriesLocked =
+    appStatus === "CONSULTA" || appStatus === "EDITAR_METODOLOGIES";
+  // Les metodologies (SAMR/STEEP) no es mostren durant "Editar tecnologies";
+  // un cop visibles, només es poden editar durant "Editar metodologies".
+  const showAnalysis = appStatus !== "EDITAR_TECNOLOGIES";
+  const analysisReadOnly = appStatus === "CONSULTA";
 
   return (
     <div className="min-h-screen text-slate-900">
       <Header
         session={session}
         view={view}
-        readOnly={readOnly}
+        readOnly={entriesLocked}
         onNavigate={setView}
         onAddNew={() => {
           setEditingEntry(null);
@@ -90,7 +99,7 @@ export function TimelineApp() {
       <main className="mx-auto max-w-3xl px-4 pb-24 pt-8 sm:px-6">
         {view === "login" && !session && <LoginForm />}
 
-        {view === "new" && session && !readOnly && (
+        {view === "new" && session && !entriesLocked && (
           <div className="mx-auto max-w-xl">
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
               {editingEntry ? "Editar la tecnologia" : "Afegir una tecnologia"}
@@ -112,7 +121,7 @@ export function TimelineApp() {
         )}
 
         {view === "admin" && session?.user.email === ADMIN_EMAIL && (
-          <AdminPage entries={entries} onDelete={handleDelete} />
+          <AdminPage entries={entries} onDelete={handleDelete} readOnly={entriesLocked} />
         )}
 
         {view === "timeline" && (
@@ -140,7 +149,9 @@ export function TimelineApp() {
               <Timeline
                 entries={entries}
                 session={session}
-                readOnly={readOnly}
+                entriesLocked={entriesLocked}
+                showAnalysis={showAnalysis}
+                analysisReadOnly={analysisReadOnly}
                 onDelete={handleDelete}
                 onEdit={(entry) => {
                   setEditingEntry(entry);

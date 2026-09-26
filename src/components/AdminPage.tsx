@@ -12,9 +12,11 @@ function formatDate(iso: string) {
 export function AdminPage({
   entries,
   onDelete,
+  readOnly = false,
 }: {
   entries: Entry[];
   onDelete: (entry: Entry) => Promise<void>;
+  readOnly?: boolean;
 }) {
   const [author, setAuthor] = useState("");
 
@@ -153,7 +155,12 @@ export function AdminPage({
       ) : (
         <ul className="space-y-3">
           {sorted.map((entry) => (
-            <AdminRow key={entry.id} entry={entry} onDelete={onDelete} />
+            <AdminRow
+              key={entry.id}
+              entry={entry}
+              onDelete={onDelete}
+              readOnly={readOnly}
+            />
           ))}
         </ul>
       )}
@@ -164,9 +171,11 @@ export function AdminPage({
 function AdminRow({
   entry,
   onDelete,
+  readOnly,
 }: {
   entry: Entry;
   onDelete: (entry: Entry) => Promise<void>;
+  readOnly: boolean;
 }) {
   const [deleting, setDeleting] = useState(false);
 
@@ -193,13 +202,15 @@ function AdminRow({
           {entry.profiles?.email ?? "—"} · {formatDate(entry.created_at)}
         </p>
       </div>
-      <button
-        onClick={handleDelete}
-        disabled={deleting}
-        className="flex-shrink-0 rounded-full border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-60"
-      >
-        {deleting ? "Eliminant..." : "Eliminar"}
-      </button>
+      {!readOnly && (
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className="flex-shrink-0 rounded-full border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+        >
+          {deleting ? "Eliminant..." : "Eliminar"}
+        </button>
+      )}
     </li>
   );
 }

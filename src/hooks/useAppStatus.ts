@@ -17,7 +17,7 @@ export function useAppStatus(appKey: AppKey) {
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return;
-        setStatus((data?.status as AppStatus | undefined) ?? DEFAULT_APP_STATUS);
+        setStatus((data?.status as AppStatus | undefined) ?? DEFAULT_APP_STATUS[appKey]);
         setLoading(false);
       });
 
